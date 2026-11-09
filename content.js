@@ -12,26 +12,7 @@
     for (const [k, v] of Object.entries(e.data.tweets || {})) tweetMap.set(k, v);
   });
 
-  // ---------- settings (edited in options.html) ----------
-  const SHARE_LABELS = {
-    image: 'Copy tweet as image',
-    imageLink: 'Copy tweet as image + link',
-  };
-  let shareMode = 'image';
-  const shareLabel = () => SHARE_LABELS[shareMode] || SHARE_LABELS.image;
-  function applyShareMode(mode) {
-    shareMode = SHARE_LABELS[mode] ? mode : 'image';
-    document.querySelectorAll('.tws-share').forEach((b) => {
-      b.title = shareLabel();
-      b.setAttribute('aria-label', shareLabel());
-    });
-  }
-  try {
-    chrome.storage.sync.get({ shareMode: 'image' }, (r) => applyShareMode(r.shareMode));
-    chrome.storage.onChanged.addListener((changes, area) => {
-      if (area === 'sync' && changes.shareMode) applyShareMode(changes.shareMode.newValue);
-    });
-  } catch (_) {}
+  const SHARE_LABEL = 'Copy tweet as image (Shift-click: image + link)';
 
   // ---------- helpers ----------
   const svg = (inner) =>
@@ -154,10 +135,10 @@
       // Top-right of the tweet, just left of the "···" menu.
       const caret = article.querySelector('[data-testid="caret"]');
       if (caret && caret.parentElement) {
-        caret.parentElement.insertBefore(makeBtn('share', shareLabel(), 'tws-share-inline'), caret);
+        caret.parentElement.insertBefore(makeBtn('share', SHARE_LABEL, 'tws-share-inline'), caret);
       } else {
         article.classList.add('tws-host');
-        article.appendChild(makeBtn('share', shareLabel()));
+        article.appendChild(makeBtn('share', SHARE_LABEL));
       }
     });
   }
@@ -196,7 +177,7 @@
     const action = btn.dataset.twsAction;
     if (action === 'copy') copyImage(btn);
     else if (action === 'download') downloadVideo(btn);
-    else if (action === 'share') shareTweet(btn);
+    else if (action === 'share') shareTweet(btn, e.shiftKey);
   }, true);
 
   // ---------- 1. copy image ----------
@@ -370,7 +351,7 @@
   }
 
   let capturing = false;
-  async function shareTweet(btn) {
+  async function shareTweet(btn, withLink) {
     const article = btn.closest('article');
     if (!article || capturing) return;
     const { user, id } = tweetInfo(article);
@@ -381,7 +362,7 @@
     try {
       // Pass the pending capture as a promise so the write keeps the click's user activation.
       const png = captureElement(article);
-      const item = shareMode === 'imageLink' ? imageLinkItem(png, link) : new ClipboardItem({ 'image/png': png });
+      const item = withLink ? imageLinkItem(png, link) : new ClipboardItem({ 'image/png': png });
       await navigator.clipboard.write([item]);
       done(btn);
     } catch (err) {
