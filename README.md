@@ -21,7 +21,7 @@ Buttons give feedback in place: a green check on success, a red ✕ on failure (
 
 Click the extension's toolbar icon to turn on **Like** and/or **Bookmark**: after a successful image copy or tweet share, the tweet is liked / bookmarked using X's own buttons. Tweets you've already liked or bookmarked are left as they are. Both are off by default.
 
-**Translate**: the share card uses X's own Grok translation when a tweet (or its quoted tweet) isn't in your X language, with a small "Translated from …" note. If the translation fails, the original text is used. Off by default.
+The share card shows each tweet as you see it on the page: if you've pressed X's "Show translation", the card uses that translation with a small "Translated from …" note; otherwise it keeps the original text. Nothing is translated on its own.
 
 **Expand "Show more"**: long tweets in the timeline open up in place as they appear, using X's own "Show more" button, so you never have to click it. Off by default.
 
@@ -38,7 +38,7 @@ Click the extension's toolbar icon to turn on **Like** and/or **Bookmark**: afte
 
 - `downloads` — save videos.
 - `clipboardWrite` — copy images.
-- `storage` — remember the Like / Bookmark / Translate / Expand settings.
+- `storage` — remember the Like / Bookmark / Expand settings.
 - `*.twimg.com` host access — fetch images, video URLs and tweet data from X's media/embed servers.
 
 ## Notes

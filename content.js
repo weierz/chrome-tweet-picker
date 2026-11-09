@@ -14,27 +14,10 @@
     for (const [k, v] of Object.entries(e.data.models || {})) models.set(k, v);
   });
 
-  // Ask inject.js (page world) to translate a tweet with X's own Grok translation.
-  const pendingTranslations = new Map();
-  let translationSeq = 0;
-  window.addEventListener('message', (e) => {
-    if (e.source !== window || !e.data || e.data.__tws !== 'translation') return;
-    const done = pendingTranslations.get(e.data.reqId);
-    if (done) { pendingTranslations.delete(e.data.reqId); done(e.data.text || ''); }
-  });
-  function requestTranslation(id) {
-    return new Promise((resolve) => {
-      const reqId = ++translationSeq;
-      pendingTranslations.set(reqId, resolve);
-      window.postMessage({ __tws: 'translate', id, reqId }, location.origin);
-      setTimeout(() => { if (pendingTranslations.delete(reqId)) resolve(''); }, 10000);
-    });
-  }
-
   const SHARE_LABEL = 'Copy tweet as image';
 
   // ---------- settings (toolbar popup, options.html) ----------
-  const settings = { autoLike: false, autoBookmark: false, translate: false, autoExpand: false };
+  const settings = { autoLike: false, autoBookmark: false, autoExpand: false };
   try {
     chrome.storage.sync.get(settings, (r) => { Object.assign(settings, r); expandTweets(); });
     chrome.storage.onChanged.addListener((changes, area) => {
@@ -470,26 +453,28 @@
     return m[2] > 30 ? 'dim' : 'dark';
   }
 
-  // Swap in X's translation when the tweet isn't in the page's (X UI) language.
-  async function translateTweet(t) {
-    const target = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
-    const one = async (x) => {
-      const lang = (x && x.lang || '').toLowerCase();
-      if (!x || !x.text || !lang || ['und', 'zxx', 'qme', 'qam', 'qct', 'qht', 'qst', 'art'].includes(lang) ||
-          lang.split('-')[0] === target) return x;
-      let text = await requestTranslation(x.id);
-      if (!text) return x;
-      for (const u of x.cardUrls || []) if (u.url && u.expanded_url) text = text.split(u.url).join(u.expanded_url);
-      text = text.replace(/\s*https:\/\/t\.co\/\w+/g, '').trim(); // media links
-      return { ...x, text, translatedFrom: lang };
+  // Mirror the page: when X is showing a tweet translated (its text element's
+  // lang no longer matches the tweet's own language), use that translated text.
+  // Tweets shown in their original language stay as they are.
+  const baseLang = (l) => (l || '').toLowerCase().split('-')[0];
+  function pageTranslation(article, t) {
+    const texts = [...article.querySelectorAll('[data-testid="tweetText"]')];
+    const inQuote = (el) => !!el.closest('div[role="link"]');
+    const one = (x, el) => {
+      if (!x || !el || !x.lang) return x;
+      const shown = el.getAttribute('lang');
+      // X translates into its UI language, so only that counts as a translation.
+      if (!shown || baseLang(shown) === baseLang(x.lang) ||
+          baseLang(shown) !== baseLang(document.documentElement.lang)) return x;
+      const text = domText(el);
+      return text ? { ...x, text, links: [], translatedFrom: x.lang } : x;
     };
-    const [main, quote] = await Promise.all([one(t), one(t.quote)]);
-    return { ...main, quote };
+    const main = one(t, texts.find((el) => !inQuote(el)));
+    return { ...main, quote: one(t.quote, texts.find(inQuote)) };
   }
 
   async function renderTweet(article) {
-    let model = await tweetModel(article);
-    if (settings.translate) model = await translateTweet(model);
+    const model = pageTranslation(article, await tweetModel(article));
     return TwsCard.render(model, { theme: pageTheme(), loadImage });
   }
 
