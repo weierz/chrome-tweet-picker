@@ -34,12 +34,13 @@
   const SHARE_LABEL = 'Copy tweet as image';
 
   // ---------- settings (toolbar popup, options.html) ----------
-  const settings = { autoLike: false, autoBookmark: false, translate: false };
+  const settings = { autoLike: false, autoBookmark: false, translate: false, autoExpand: false };
   try {
-    chrome.storage.sync.get(settings, (r) => Object.assign(settings, r));
+    chrome.storage.sync.get(settings, (r) => { Object.assign(settings, r); expandTweets(); });
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== 'sync') return;
       for (const k of Object.keys(changes)) if (k in settings) settings[k] = changes[k].newValue;
+      if (changes.autoExpand) expandTweets();
     });
   } catch (_) {}
 
@@ -150,7 +151,15 @@
   // ---------- decorate DOM ----------
   const IMG_SEL = 'img[src*="pbs.twimg.com/media/"]';
 
+  // Press X's inline "Show more" on long tweets. Only the <button> form, which
+  // expands in place; a link form would open the tweet's page instead.
+  function expandTweets() {
+    if (!settings.autoExpand || !document.body) return;
+    document.querySelectorAll('button[data-testid="tweet-text-show-more-link"]').forEach((b) => b.click());
+  }
+
   function decorate() {
+    expandTweets();
     // Images (timeline photos + photo viewer)
     document.querySelectorAll('[data-testid="tweetPhoto"], [data-testid="swipe-to-dismiss"]').forEach((host) => {
       const existing = host.querySelector(':scope > .tws-copy');

@@ -23,6 +23,8 @@ Click the extension's toolbar icon to turn on **Like** and/or **Bookmark**: afte
 
 **Translate**: the share card uses X's own Grok translation when a tweet (or its quoted tweet) isn't in your X language, with a small "Translated from …" note. If the translation fails, the original text is used. Off by default.
 
+**Expand "Show more"**: long tweets in the timeline open up in place as they appear, using X's own "Show more" button, so you never have to click it. Off by default.
+
 ## How it works
 
 - `inject.js` runs in the page and reads X's own API responses to learn each video's MP4 URLs. If a URL wasn't seen, `background.js` falls back to the public embed endpoint (`cdn.syndication.twimg.com`).
@@ -36,7 +38,7 @@ Click the extension's toolbar icon to turn on **Like** and/or **Bookmark**: afte
 
 - `downloads` — save videos.
 - `clipboardWrite` — copy images.
-- `storage` — remember the Like / Bookmark / Translate settings.
+- `storage` — remember the Like / Bookmark / Translate / Expand settings.
 - `*.twimg.com` host access — fetch images, video URLs and tweet data from X's media/embed servers.
 
 ## Notes
