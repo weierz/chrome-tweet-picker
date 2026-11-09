@@ -263,37 +263,45 @@
     return y + avSize;
   }
 
-  function countsLine(L, counts, x, y) {
-    const parts = [
-      [counts.replies, 'Reply', 'Replies'],
-      [counts.reposts, 'Repost', 'Reposts'],
-      [counts.likes, 'Like', 'Likes'],
-      [counts.views, 'View', 'Views'],
-    ].filter(([n]) => typeof n === 'number' && n > 0);
-    if (!parts.length) return y;
-    const numFont = `700 15px ${FONT}`, lblFont = `400 15px ${FONT}`;
-    const pieces = [];
-    let cx = x;
-    for (const [n, one, many] of parts) {
-      const num = compact.format(n);
-      const lbl = ' ' + (n === 1 ? one : many);
-      L.m.font = numFont;
-      const nw = L.m.measureText(num).width;
-      L.m.font = lblFont;
-      const lw = L.m.measureText(lbl).width;
-      pieces.push([num, cx, lbl, cx + nw]);
-      cx += nw + lw + 20;
-    }
+  // Outline icons (Lucide, ISC licence) on a 24px grid.
+  const COUNT_ICONS = {
+    replies: ['M7.9 20A9 9 0 1 0 4 16.1L2 22Z'],
+    reposts: ['m2 9 3-3 3 3', 'M13 18H7a2 2 0 0 1-2-2V6', 'm22 15-3 3-3-3', 'M11 6h6a2 2 0 0 1 2 2v10'],
+    likes: ['M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z'],
+    views: ['M4 21v-6', 'M9.33 21V9', 'M14.67 21V3', 'M20 21v-9'],
+  };
+
+  // Reply / repost / like / view icons with numbers, spread across the width like X.
+  function countsLine(L, counts, x, y, w) {
     const th = L.th;
+    const keys = ['replies', 'reposts', 'likes', 'views'];
+    const font = `400 14px ${FONT}`;
+    const ICON = 18;
+    const cy = y + 10;
     L.ops.push((ctx) => {
-      ctx.textBaseline = 'middle';
-      for (const [num, nx, lbl, lx] of pieces) {
-        ctx.font = numFont; ctx.fillStyle = th.text; ctx.fillText(num, nx, y + 10);
-        ctx.font = lblFont; ctx.fillStyle = th.muted; ctx.fillText(lbl, lx, y + 10);
-      }
+      keys.forEach((k, i) => {
+        const ix = x + (w / keys.length) * i;
+        ctx.save();
+        ctx.translate(ix, cy - ICON / 2);
+        ctx.scale(ICON / 24, ICON / 24);
+        ctx.strokeStyle = th.muted;
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        for (const d of COUNT_ICONS[k]) ctx.stroke(new Path2D(d));
+        ctx.restore();
+        const n = counts[k];
+        if (typeof n === 'number' && n > 0) {
+          ctx.font = font;
+          ctx.fillStyle = th.muted;
+          ctx.textBaseline = 'middle';
+          ctx.fillText(compact.format(n), ix + ICON + 6, cy);
+        }
+      });
     });
     return y + 20;
   }
+
 
   // Link preview ("summary_large_image" / "summary" cards).
   function linkCardBlock(L, card, x, y, w) {
@@ -522,7 +530,7 @@
         ctx.fillStyle = th.border;
         ctx.fillRect(PAD, ly, innerW, 1);
       });
-      y = countsLine(L, c, PAD, ly + 14);
+      y = countsLine(L, c, PAD, ly + 14, innerW);
     }
 
     y += PAD;
