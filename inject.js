@@ -63,7 +63,10 @@
     const l = o.legacy;
     const note = o.note_tweet && o.note_tweet.note_tweet_results && o.note_tweet.note_tweet_results.result;
     const mediaList = (l.extended_entities && l.extended_entities.media) || (l.entities && l.entities.media) || [];
-    const quoteRaw = o.quoted_status_result && o.quoted_status_result.result;
+    // A quoted tweet's own quote comes as nested_quoted_tweet_results
+    // (its quoted_status_result is only a { rest_id } reference).
+    const quoteRaw = (o.quoted_status_result && o.quoted_status_result.result) ||
+      (o.nested_quoted_tweet_results && o.nested_quoted_tweet_results.result);
     const quote = depth < 2 ? tweetOf(quoteRaw, depth + 1) : null;
     const quoteId = (quote && quote.id) || l.quoted_status_id_str;
     const urls = note ? note.entity_set && note.entity_set.urls : l.entities && l.entities.urls;
