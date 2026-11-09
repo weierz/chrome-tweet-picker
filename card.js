@@ -184,20 +184,10 @@
   // ---------- layout ----------
   // Every block measures with `m` and pushes draw closures to `ops`; returns the new y.
 
-  function textBlock(L, text, links, x, y, maxW, size, lineH, color, maxLines = Infinity) {
+  function textBlock(L, text, links, x, y, maxW, size, lineH, color) {
     const font = `400 ${size}px ${FONT}`;
     L.m.font = font;
-    let lines = wrap(L.m, text, maxW, linkRanges(text, links));
-    if (lines.length > maxLines) {
-      // Cut like X does: keep the first lines and end the last one with "…".
-      lines = lines.slice(0, maxLines);
-      const last = lines[maxLines - 1].slice();
-      const ell = L.m.measureText('…').width;
-      const end = () => (last.length ? last[last.length - 1].x + L.m.measureText(last[last.length - 1].t).width : 0);
-      while (last.length && (end() + ell > maxW || !last[last.length - 1].t.trim())) last.pop();
-      last.push({ t: '…', x: end(), link: false });
-      lines[maxLines - 1] = last;
-    }
+    const lines = wrap(L.m, text, maxW, linkRanges(text, links));
     L.ops.push((ctx) => {
       ctx.font = font;
       ctx.textBaseline = 'middle';
@@ -426,13 +416,13 @@
   }
 
   // A quoted tweet in a bordered box. Like X, a quote can hold one more
-  // quote (level 2), drawn smaller with its text cut to a few lines.
+  // quote (level 2), drawn a little smaller, with its full text.
   function quoteBlock(L, q, x, top, w, level) {
     const th = L.th, nested = level > 1;
     const ip = nested ? 12 : 14, inner = w - ip * 2;
     const size = nested ? 14 : 15, lineH = nested ? 20 : 21;
     let qy = userLine(L, q.user || {}, x + ip, top + ip, nested ? 20 : 22, size, true, inner);
-    if (q.text) qy = textBlock(L, q.text, q.links, x + ip, qy + 6, inner, size, lineH, th.text, nested ? 4 : Infinity);
+    if (q.text) qy = textBlock(L, q.text, q.links, x + ip, qy + 6, inner, size, lineH, th.text);
     if (q.text && q.translatedFrom) qy = translatedNote(L, q.translatedFrom, x + ip, qy + 2, 13);
     if (q.media && q.media.length) qy = mediaBlock(L, q.media, x + ip, qy + 10, inner, nested ? inner * 0.6 : inner, nested ? 10 : 12);
     if (q.quote && level < 2) qy = quoteBlock(L, q.quote, x + ip, qy + 10, inner, level + 1);
