@@ -29,7 +29,6 @@ The share card shows each tweet as you see it on the page: if you've pressed X's
 
 - `inject.js` runs in the page and reads X's own API responses to learn each video's MP4 URLs. If a URL wasn't seen, `background.js` falls back to the public embed endpoint (`cdn.syndication.twimg.com`).
 - `inject.js` also keeps each tweet's full data (long-tweet text, media, link preview, quoted tweet, counts) for the share card.
-- `inject.js` also bridges translation requests to X's own translate endpoint, reusing the headers X's web app sends; they stay in the page.
 - `card.js` draws the share card on a canvas. If X's data for a tweet wasn't seen, it uses the embed endpoint, then the visible page as a last resort.
 - `content.js` adds the hover buttons and handles the clipboard.
 - `background.js` fetches images cross-origin and starts downloads.
