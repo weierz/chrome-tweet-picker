@@ -415,10 +415,8 @@
     return textBlock(L, model.url, [model.url], x, y + 12, w, 14, 20, L.th.link);
   }
 
-  async function render(model, { theme = 'light', loadImage, cardLink = 'above' }) {
-    const th = THEMES[theme] || THEMES.light;
-
-    // Load every image first so the layout knows real aspect ratios.
+  // Every image the card draws (also used to prefetch them).
+  function imageUrls(model) {
     const urls = new Set();
     const collect = (t) => {
       if (!t) return;
@@ -428,8 +426,15 @@
       collect(t.quote);
     };
     collect(model);
+    return [...urls];
+  }
+
+  async function render(model, { theme = 'light', loadImage, cardLink = 'above' }) {
+    const th = THEMES[theme] || THEMES.light;
+
+    // Load every image first so the layout knows real aspect ratios.
     const imgs = new Map();
-    await Promise.all([...urls].map(async (u) => {
+    await Promise.all(imageUrls(model).map(async (u) => {
       try { const b = await loadImage(u); if (b) imgs.set(u, b); } catch (_) {}
     }));
 
@@ -524,5 +529,5 @@
     };
   }
 
-  globalThis.TwsCard = { render, cleanText, avatarUrl, cardOf };
+  globalThis.TwsCard = { render, imageUrls, cleanText, avatarUrl, cardOf };
 })();

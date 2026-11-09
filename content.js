@@ -76,6 +76,21 @@
     });
   }
 
+  // Small LRU of promises: repeat requests share one fetch; failures aren't kept.
+  function memo(map, key, make, max) {
+    if (map.has(key)) {
+      const hit = map.get(key);
+      map.delete(key);
+      map.set(key, hit);
+      return hit;
+    }
+    const p = make();
+    map.set(key, p);
+    p.catch(() => { if (map.get(key) === p) map.delete(key); });
+    while (map.size > max) map.delete(map.keys().next().value);
+    return p;
+  }
+
   function b64ToBlob(b64, mime) {
     const bin = atob(b64);
     const bytes = new Uint8Array(bin.length);
@@ -106,6 +121,23 @@
       return;
     }
     btn.innerHTML = ICONS[action];
+  }
+
+  // Run a button's job. The spinner only appears if it takes a moment; with the
+  // hover prefetch most clicks finish before that.
+  async function work(btn, job) {
+    btn.__twsWorking = true;
+    const t = setTimeout(() => setState(btn, 'busy'), 250);
+    try {
+      await job();
+      clearTimeout(t);
+      done(btn);
+    } catch (err) {
+      clearTimeout(t);
+      done(btn, err);
+    } finally {
+      btn.__twsWorking = false;
+    }
   }
 
   // Feedback lives on the button itself: green check on success, red X on
@@ -225,7 +257,7 @@
     if (!btn) return;
     e.preventDefault();
     e.stopImmediatePropagation();
-    if (btn.classList.contains('tws-busy')) return;
+    if (btn.__twsWorking) return;
     const action = btn.dataset.twsAction;
     if (action === 'copy') copyImage(btn);
     else if (action === 'download') downloadVideo(btn);
@@ -254,23 +286,26 @@
     return canvas.convertToBlob({ type: 'image/png' });
   }
 
-  async function copyImage(btn) {
-    const img = btn.parentElement.querySelector(IMG_SEL);
-    if (!img) return;
-    const src = img.currentSrc || img.src;
-    setState(btn, 'busy');
-    try {
+  // Full-size PNGs are large, so only the last few are kept.
+  const pngCache = new Map();
+  const imagePng = (src) =>
+    memo(pngCache, src, () => fetchAsPng(originalUrl(src)).catch(() => fetchAsPng(src)), 4);
+  const hostImageSrc = (host) => {
+    const img = host.querySelector(IMG_SEL);
+    return img && (img.currentSrc || img.src);
+  };
+
+  function copyImage(btn) {
+    const src = hostImageSrc(btn.parentElement);
+    if (!src) return;
+    work(btn, async () => {
       // Pass a promise so the clipboard write keeps the click's user activation.
-      const png = fetchAsPng(originalUrl(src)).catch(() => fetchAsPng(src));
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
-      done(btn);
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': imagePng(src) })]);
       // Timeline photo -> its tweet; photo viewer -> the viewer's action bar.
       const article = btn.closest('article');
       if (article) engage(article);
       else engageViewer(btn.closest('[role="dialog"]'));
-    } catch (err) {
-      done(btn, err);
-    }
+    });
   }
 
   // ---------- 2. download video ----------
@@ -299,18 +334,14 @@
     return r.url;
   }
 
-  async function downloadVideo(btn) {
+  function downloadVideo(btn) {
     const player = btn.parentElement;
-    setState(btn, 'busy');
-    try {
+    work(btn, async () => {
       const url = await findVideoUrl(player);
       if (!url) throw new Error('No downloadable video found');
       const { user, id } = tweetInfo(player.closest('article'));
       await bg({ type: 'download', url, filename: `${safe(user)}_${safe(id)}.mp4` });
-      done(btn);
-    } catch (err) {
-      done(btn, err);
-    }
+    });
   }
 
   // ---------- 3. share tweet as image ----------
@@ -415,13 +446,19 @@
     return fix(t);
   }
 
+  const synCache = new Map();
+  const syndicated = (id) => memo(synCache, id, async () => {
+    const { data } = await bg({ type: 'syndication', tweetId: id });
+    const t = fromSyndication(data);
+    if (!t) throw new Error('Tweet not found');
+    return t;
+  }, 100);
+
   async function tweetModel(article) {
     const info = tweetInfo(article);
     if (models.has(info.id)) return finish(models.get(info.id));
     try {
-      const { data } = await bg({ type: 'syndication', tweetId: info.id });
-      const t = fromSyndication(data);
-      if (t) return finish(t);
+      return finish(await syndicated(info.id));
     } catch (_) {}
     return finish(fromDom(article, info));
   }
@@ -437,13 +474,21 @@
     }
   }
 
+  // Compressed image blobs for the share card, kept so a hover can prefetch them.
+  const blobCache = new Map();
+  function imageBlob(url) {
+    return memo(blobCache, url, () => {
+      const get = async (u) => {
+        const r = await bg({ type: 'fetch', url: u });
+        return b64ToBlob(r.b64, r.mime);
+      };
+      const big = largeUrl(url);
+      return big === url ? get(url) : get(big).catch(() => get(url));
+    }, 60);
+  }
+
   async function loadImage(url) {
-    const get = async (u) => {
-      const r = await bg({ type: 'fetch', url: u });
-      return createImageBitmap(b64ToBlob(r.b64, r.mime));
-    };
-    const big = largeUrl(url);
-    return big === url ? get(url) : get(big).catch(() => get(url));
+    return createImageBitmap(await imageBlob(url));
   }
 
   function pageTheme() {
@@ -479,22 +524,46 @@
   }
 
   let rendering = false;
-  async function shareTweet(btn) {
+  function shareTweet(btn) {
     const article = btn.closest('article');
     if (!article || rendering) return;
 
     rendering = true;
-    setState(btn, 'busy');
-    try {
+    work(btn, async () => {
       // Pass the pending render as a promise so the write keeps the click's user activation.
-      const png = renderTweet(article);
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
-      done(btn);
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': renderTweet(article) })]);
       engage(article);
-    } catch (err) {
-      done(btn, err);
-    } finally {
-      rendering = false;
-    }
+    }).finally(() => { rendering = false; });
   }
+
+  // ---------- prefetch on hover ----------
+  // Resting the pointer on a photo or tweet for a moment starts the downloads
+  // its button needs, so the click itself is (nearly) instant. Scrolling past
+  // doesn't count: the pointer has to stay put.
+  async function prefetchTweet(article) {
+    const model = await tweetModel(article);
+    for (const u of TwsCard.imageUrls(model)) imageBlob(u).catch(() => {});
+  }
+
+  let hoverTimer = 0;
+  let hoverTarget = null;
+  document.addEventListener('mouseover', (e) => {
+    if (!(e.target instanceof Element)) return;
+    const host = e.target.closest('.tws-host');
+    const target = (host && host.querySelector(':scope > .tws-copy') && host) ||
+      e.target.closest('article[data-testid="tweet"]');
+    if (target === hoverTarget) return;
+    hoverTarget = target;
+    clearTimeout(hoverTimer);
+    if (!target) return;
+    hoverTimer = setTimeout(() => {
+      if (target.matches('article')) prefetchTweet(target).catch(() => {});
+      else {
+        const src = hostImageSrc(target);
+        if (src) imagePng(src).catch(() => {});
+        const article = target.closest('article');
+        if (article) prefetchTweet(article).catch(() => {});
+      }
+    }, 200);
+  }, { passive: true });
 })();
