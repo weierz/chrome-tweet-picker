@@ -1,4 +1,4 @@
-# Tweetkit Privacy Policy — Draft
+# Tweetkit Privacy Policy
 
 Last updated: November 9, 2026
 
@@ -18,8 +18,8 @@ Tweetkit stores your Like, Bookmark, and Expand preferences using Chrome's sync 
 
 ## Sharing and changes
 
-Tweetkit does not sell user data or use it for advertising, lending, or purposes unrelated to its features. The developer may update this policy when the extension's practices change; the latest version will be available at the policy URL shown on its store listing.
+Tweetkit does not sell user data or use it for advertising, lending, or purposes unrelated to its features. Its use of information received from Google APIs follows the Chrome Web Store User Data Policy, including the Limited Use requirements. The developer may update this policy when the extension's practices change; the latest version will be available at the policy URL shown on its store listing.
 
 ## Contact
 
-[Add a public contact email or support URL before publishing.]
+For privacy questions, contact will.b.chang@gmail.com.
