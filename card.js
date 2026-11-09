@@ -8,7 +8,6 @@
 //   card: { url, large, title, domain, description, image: { url, w, h } } | null,   // link preview
 //   url,                                                                        // tweet permalink
 // }
-// opts.footer: 'date' | 'inline' | 'stacked' | 'bar' — where the tweet link goes.
 // opts.cardLink: 'above' | 'below' — where the link preview's full URL goes.
 (() => {
   'use strict';
@@ -230,15 +229,18 @@
     return y - GAP;
   }
 
-  function userLine(L, user, x, y, avSize, nameSize, inlineHandle, maxW) {
+  function userLine(L, user, x, y, avSize, nameSize, inlineHandle, maxW, date) {
     const th = L.th;
+    const dateFont = `400 15px ${FONT}`;
+    L.m.font = dateFont;
+    const dateW = date ? L.m.measureText(date).width + 12 : 0;
     const av = L.imgs.get(avatarUrl(user.avatar));
     L.ops.push((ctx) => drawAvatar(ctx, av, x, y, avSize, th));
     const nx = x + avSize + (inlineHandle ? 8 : 12);
     const nameFont = `700 ${nameSize}px ${FONT}`;
     const handleFont = `400 ${nameSize - (inlineHandle ? 0 : 2)}px ${FONT}`;
     const badgeR = nameSize * 0.5;
-    const avail = x + maxW - nx;
+    const avail = x + maxW - nx - dateW;
 
     L.m.font = nameFont;
     const name = fit(L.m, user.name || user.handle || '', avail - (user.verified ? badgeR * 2 + 6 : 0) - (inlineHandle ? 60 : 0));
@@ -259,6 +261,13 @@
       ctx.font = handleFont;
       ctx.fillStyle = th.muted;
       ctx.fillText(handle, handleX, handleY);
+      if (date) {
+        ctx.font = dateFont;
+        ctx.fillStyle = th.muted;
+        ctx.textAlign = 'right';
+        ctx.fillText(date, x + maxW, nameY);
+        ctx.textAlign = 'left';
+      }
     });
     return y + avSize;
   }
@@ -400,83 +409,13 @@
     return y + H;
   }
 
-  function drawLinkIcon(ctx, x, cy, color) {
-    ctx.save();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.6;
-    ctx.lineCap = 'round';
-    ctx.translate(x, cy - 7);
-    ctx.scale(14 / 24, 14 / 24);
-    ctx.stroke(new Path2D('M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'));
-    ctx.stroke(new Path2D('M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'));
-    ctx.restore();
+  // The tweet's own link, in full (wrapped if it doesn't fit on one line).
+  function footerBlock(L, model, x, y, w) {
+    if (!model.url) return y;
+    return textBlock(L, model.url, [model.url], x, y + 12, w, 14, 20, L.th.link);
   }
 
-  // Date and tweet link, in one of several layouts.
-  function footerBlock(L, model, footer, x, y, w) {
-    const th = L.th;
-    const date = formatDate(model.createdAt);
-    const link = footer !== 'date' && model.url ? model.url : '';
-    const font = `400 15px ${FONT}`;
-    const small = `400 14px ${FONT}`;
-    if (!date && !link) return y;
-
-    if (footer === 'inline' && link) {
-      L.m.font = font;
-      const dw = date ? L.m.measureText(date).width : 0;
-      L.m.font = small;
-      const lt = fit(L.m, link, w - dw - 16);
-      const top = y + 16;
-      L.ops.push((ctx) => {
-        ctx.textBaseline = 'middle';
-        ctx.font = small; ctx.fillStyle = th.link; ctx.fillText(lt, x, top + 10);
-        if (date) { ctx.font = font; ctx.fillStyle = th.muted; ctx.textAlign = 'right'; ctx.fillText(date, x + w, top + 10); ctx.textAlign = 'left'; }
-      });
-      return top + 20;
-    }
-
-    if (footer === 'bar' && link) {
-      const top = y + 18;
-      L.m.font = small;
-      const dw = date ? L.m.measureText(date).width : 0;
-      const lt = fit(L.m, link, w - dw - 40);
-      L.ops.push((ctx) => {
-        ctx.fillStyle = th.fill;
-        ctx.beginPath();
-        ctx.roundRect(x, top, w, 36, 10);
-        ctx.fill();
-        drawLinkIcon(ctx, x + 12, top + 18, th.link);
-        ctx.textBaseline = 'middle';
-        ctx.font = small;
-        ctx.fillStyle = th.link;
-        ctx.fillText(lt, x + 32, top + 18);
-        if (date) { ctx.fillStyle = th.muted; ctx.textAlign = 'right'; ctx.fillText(date, x + w - 12, top + 18); ctx.textAlign = 'left'; }
-      });
-      return top + 36;
-    }
-
-    // 'date' and 'stacked'
-    let top = y + 16;
-    if (date) {
-      const dy = top;
-      L.ops.push((ctx) => {
-        ctx.textBaseline = 'middle'; ctx.font = font; ctx.fillStyle = th.muted; ctx.fillText(date, x, dy + 10);
-      });
-      top += 20;
-    }
-    if (link) {
-      L.m.font = small;
-      const lt = fit(L.m, link, w);
-      const ly = top + (date ? 4 : 0);
-      L.ops.push((ctx) => {
-        ctx.textBaseline = 'middle'; ctx.font = small; ctx.fillStyle = th.link; ctx.fillText(lt, x, ly + 10);
-      });
-      top = ly + 20;
-    }
-    return top;
-  }
-
-  async function render(model, { theme = 'light', loadImage, footer = 'inline', cardLink = 'above' }) {
+  async function render(model, { theme = 'light', loadImage, cardLink = 'above' }) {
     const th = THEMES[theme] || THEMES.light;
 
     // Load every image first so the layout knows real aspect ratios.
@@ -508,7 +447,7 @@
     }
     L.cardUrlShown = cardUrlAbove || !!(card && card.url && text.includes(card.url));
 
-    y = userLine(L, model.user || {}, PAD, y, 48, 17, false, innerW);
+    y = userLine(L, model.user || {}, PAD, y, 48, 17, false, innerW, formatDate(model.createdAt));
     if (text) y = textBlock(L, text, model.links, PAD, y + 12, innerW, 18, 26, th.text);
     if (text && model.translatedFrom) y = translatedNote(L, model.translatedFrom, PAD, y + 4, 14);
     if (model.media && model.media.length) y = mediaBlock(L, model.media, PAD, y + 14, innerW, innerW * 1.2, 16);
@@ -535,7 +474,7 @@
       y = bottom;
     }
 
-    y = footerBlock(L, model, footer, PAD, y, innerW);
+    y = footerBlock(L, model, PAD, y, innerW);
 
     const c = model.counts || {};
     if ([c.replies, c.reposts, c.likes, c.views].some((n) => n > 0)) {
