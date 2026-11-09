@@ -64,7 +64,7 @@
     const note = o.note_tweet && o.note_tweet.note_tweet_results && o.note_tweet.note_tweet_results.result;
     const mediaList = (l.extended_entities && l.extended_entities.media) || (l.entities && l.entities.media) || [];
     const quoteRaw = o.quoted_status_result && o.quoted_status_result.result;
-    const quote = depth < 1 ? tweetOf(quoteRaw, depth + 1) : null;
+    const quote = depth < 2 ? tweetOf(quoteRaw, depth + 1) : null;
     const quoteId = (quote && quote.id) || l.quoted_status_id_str;
     const urls = note ? note.entity_set && note.entity_set.urls : l.entities && l.entities.urls;
     const body = note

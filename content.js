@@ -356,7 +356,7 @@
       w: m.original_info && m.original_info.width,
       h: m.original_info && m.original_info.height,
     }));
-    const quote = depth < 1 ? fromSyndication(d.quoted_tweet, depth + 1) : null;
+    const quote = depth < 2 ? fromSyndication(d.quoted_tweet, depth + 1) : null;
     const entities = d.entities || {};
     const body = TwsCard.cleanText(d.text, d.display_text_range, entities.urls,
       entities.media || d.mediaDetails, quote && quote.id);
@@ -515,7 +515,10 @@
       return text ? { ...x, text, links: [], translatedFrom: x.lang } : x;
     };
     const main = one(t, texts.find((el) => !inQuote(el)));
-    return { ...main, quote: one(t.quote, texts.find(inQuote)) };
+    const quoted = texts.filter(inQuote);
+    let quote = one(t.quote, quoted[0]);
+    if (quote && quote.quote) quote = { ...quote, quote: one(quote.quote, quoted[1]) };
+    return { ...main, quote };
   }
 
   async function renderTweet(article) {
