@@ -114,7 +114,7 @@
     if (err) {
       btn.title = `Failed: ${err.message}`;
       setState(btn, 'err');
-      console.warn('[Tweet Media Tools]', err);
+      console.warn('[Tweetkit]', err);
     } else {
       btn.title = btn.getAttribute('aria-label');
       setState(btn, 'ok');

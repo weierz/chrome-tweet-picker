@@ -1,4 +1,4 @@
-# Tweet Media Tools
+# Tweetkit
 
 Chrome extension (Manifest V3) for x.com / twitter.com.
 
