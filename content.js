@@ -121,20 +121,20 @@
     });
 
     // Tweets
+    // Re-checked on every pass: on page load X can render a tweet before its
+    // header icons, and Grok's button can arrive after "···".
     document.querySelectorAll('article[data-testid="tweet"]').forEach((article) => {
-      if (article.querySelector('.tws-share')) return;
-      // First icon of the tweet's top-right stack (before Grok and "···").
       const found = headerStack(article);
-      if (found) {
-        // Grok's wrapper brings its own 8px gap; next to "···" alone we add it.
-        const btn = makeBtn('share', SHARE_LABEL, found.shared ? 'tws-share-inline' : 'tws-share-inline tws-gap');
+      if (!found) return; // header not rendered yet; the next pass retries
+      let btn = article.querySelector('.tws-share');
+      if (!btn) {
+        btn = makeBtn('share', SHARE_LABEL, 'tws-share-inline');
         const icon = found.caret.querySelector('svg');
         if (icon) btn.style.setProperty('--tws-icon', getComputedStyle(icon).color);
-        found.stack.prepend(btn);
-      } else {
-        article.classList.add('tws-host');
-        article.appendChild(makeBtn('share', SHARE_LABEL));
       }
+      // Grok's wrapper brings its own 8px gap; next to "···" alone we add it.
+      btn.classList.toggle('tws-gap', !found.shared);
+      if (found.stack.firstElementChild !== btn) found.stack.prepend(btn);
     });
   }
 
@@ -142,7 +142,8 @@
   // the menu button until an ancestor also contains another button.
   function headerStack(article) {
     const caret = article.querySelector('[data-testid="caret"]');
-    if (!caret) return null;
+    // No menu yet, or not laid out (widths read 0): wait for a later pass.
+    if (!caret || !caret.getBoundingClientRect().width) return null;
     for (let node = caret.parentElement; node && node !== article; node = node.parentElement) {
       // The icon stack is narrow; anything wider is the rest of the header.
       if (node.querySelector('[data-testid="User-Name"]') || node.getBoundingClientRect().width > 200) break;
