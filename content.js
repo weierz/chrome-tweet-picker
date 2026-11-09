@@ -124,9 +124,13 @@
     document.querySelectorAll('article[data-testid="tweet"]').forEach((article) => {
       if (article.querySelector('.tws-share')) return;
       // First icon of the tweet's top-right stack (before Grok and "···").
-      const stack = headerStack(article);
-      if (stack) {
-        stack.prepend(makeBtn('share', SHARE_LABEL, 'tws-share-inline'));
+      const found = headerStack(article);
+      if (found) {
+        // Grok's wrapper brings its own 8px gap; next to "···" alone we add it.
+        const btn = makeBtn('share', SHARE_LABEL, found.shared ? 'tws-share-inline' : 'tws-share-inline tws-gap');
+        const icon = found.caret.querySelector('svg');
+        if (icon) btn.style.setProperty('--tws-icon', getComputedStyle(icon).color);
+        found.stack.prepend(btn);
       } else {
         article.classList.add('tws-host');
         article.appendChild(makeBtn('share', SHARE_LABEL));
@@ -144,9 +148,9 @@
       if (node.querySelector('[data-testid="User-Name"]') || node.getBoundingClientRect().width > 200) break;
       const other = [...node.querySelectorAll('button, [role="button"]')]
         .some((b) => b !== caret && !b.classList.contains('tws-btn'));
-      if (other) return node;
+      if (other) return { stack: node, caret, shared: true };
     }
-    return caret.parentElement;
+    return { stack: caret.parentElement, caret, shared: false };
   }
 
   let scheduled = false;
@@ -292,6 +296,24 @@
     };
   }
 
+  // Tweet text from the page. X shortens link text visually ("site.com/pa…")
+  // but keeps the full URL in hidden spans, so read links via textContent.
+  function domText(el) {
+    if (!el) return '';
+    let out = '';
+    const walk = (node) => {
+      for (const n of node.childNodes) {
+        if (n.nodeType === 3) out += n.data;
+        else if (n.tagName === 'IMG') out += n.alt || '';
+        else if (n.tagName === 'A' && /^https?:\/\/t\.co\//.test(n.href)) out += n.textContent.replace(/…$/, '');
+        else if (n.tagName === 'BR') out += '\n';
+        else walk(n);
+      }
+    };
+    walk(el);
+    return out.trim();
+  }
+
   // Last resort: read what's on the page (text may be cut at "Show more").
   function fromDom(article, info) {
     const nameEl = article.querySelector('[data-testid="User-Name"] a span');
@@ -309,7 +331,7 @@
         verified: !!article.querySelector('[data-testid="icon-verified"]'),
       },
       createdAt: article.querySelector('time')?.getAttribute('datetime'),
-      text: article.querySelector('[data-testid="tweetText"]')?.innerText || '',
+      text: domText(article.querySelector('[data-testid="tweetText"]')),
       links: [],
       media,
       quote: null,

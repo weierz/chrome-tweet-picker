@@ -30,18 +30,26 @@
 .tws-btn.tws-busy svg { animation: tws-spin 0.8s linear infinite; }
 @keyframes tws-spin { to { transform: rotate(360deg); } }
 
-/* Share button in the tweet header, next to the "···" menu */
+/* Share button in the tweet header: sized and spaced like X's own 19px icons */
 .tws-btn.tws-share-inline {
   position: static;
-  align-self: center;
+  align-self: flex-start;
   flex: 0 0 auto;
-  margin-right: 4px;
+  width: 20px;
+  height: 20px;
   background: transparent;
-  color: rgb(113, 118, 123);
+  color: var(--tws-icon, rgb(83, 100, 113));
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+  transition: opacity 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
+.tws-btn.tws-share-inline svg { width: 19px; height: 19px; }
+.tws-btn.tws-share-inline.tws-gap { margin-right: 8px; }
 article:hover .tws-share-inline { opacity: 1; }
-.tws-btn.tws-share-inline:hover { background: rgba(29, 155, 240, 0.1); color: rgb(29, 155, 240); }
-.tws-btn.tws-share-inline.tws-ok { background: transparent; color: #00ba7c; }
-.tws-btn.tws-share-inline.tws-err { background: transparent; color: #f4212e; }
+.tws-btn.tws-share-inline:hover {
+  background: rgba(29, 155, 240, 0.1);
+  box-shadow: 0 0 0 7px rgba(29, 155, 240, 0.1);
+  color: rgb(29, 155, 240);
+}
+.tws-btn.tws-share-inline.tws-ok { background: transparent; box-shadow: none; color: #00ba7c; }
+.tws-btn.tws-share-inline.tws-err { background: transparent; box-shadow: none; color: #f4212e; }

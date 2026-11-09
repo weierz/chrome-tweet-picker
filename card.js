@@ -35,7 +35,7 @@
     for (const u of urls || []) {
       if (!u || !u.url) continue;
       const isQuote = quoteId && (/\/status\/(\d+)/.exec(u.expanded_url || '') || [])[1] === quoteId;
-      const d = isQuote ? '' : (u.display_url || u.expanded_url || u.url);
+      const d = isQuote ? '' : (u.expanded_url || u.display_url || u.url);
       t = t.split(u.url).join(d);
       if (d) links.push(d);
     }
