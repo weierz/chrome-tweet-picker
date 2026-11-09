@@ -16,6 +16,38 @@
 
   const SHARE_LABEL = 'Copy tweet as image';
 
+  // ---------- settings (toolbar popup, options.html) ----------
+  const settings = { autoLike: false, autoBookmark: false };
+  try {
+    chrome.storage.sync.get(settings, (r) => Object.assign(settings, r));
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'sync') return;
+      for (const k of Object.keys(changes)) if (k in settings) settings[k] = changes[k].newValue;
+    });
+  } catch (_) {}
+
+  // After a successful copy/share, press X's own Like / Bookmark buttons.
+  // Only the "not yet" states match ("like", "bookmark"), so nothing is ever undone.
+  function engage(scope) {
+    if (!scope) return;
+    if (settings.autoLike) scope.querySelector('[data-testid="like"]')?.click();
+    if (settings.autoBookmark) scope.querySelector('[data-testid="bookmark"]')?.click();
+  }
+
+  // Photo viewer: the bottom bar has Like; Bookmark is only on the tweet in the
+  // side panel, which also lists replies, so find the tweet by the URL's id.
+  // Press each action once (bar first) so nothing toggles twice.
+  function engageViewer(dialog) {
+    if (!dialog) return;
+    const id = (location.pathname.match(/\/status\/(\d+)/) || [])[1];
+    const tweet = id && [...dialog.querySelectorAll('article')].find((a) => tweetInfo(a).id === id);
+    const pick = (testid) =>
+      [...dialog.querySelectorAll(`[data-testid="${testid}"]`)].find((b) => !b.closest('article')) ||
+      tweet?.querySelector(`[data-testid="${testid}"]`);
+    if (settings.autoLike) pick('like')?.click();
+    if (settings.autoBookmark) pick('bookmark')?.click();
+  }
+
   // ---------- helpers ----------
   const svg = (inner) =>
     `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
@@ -223,6 +255,10 @@
       const png = fetchAsPng(originalUrl(src)).catch(() => fetchAsPng(src));
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
       done(btn);
+      // Timeline photo -> its tweet; photo viewer -> the viewer's action bar.
+      const article = btn.closest('article');
+      if (article) engage(article);
+      else engageViewer(btn.closest('[role="dialog"]'));
     } catch (err) {
       done(btn, err);
     }
@@ -423,6 +459,7 @@
       const png = renderTweet(article);
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
       done(btn);
+      engage(article);
     } catch (err) {
       done(btn, err);
     } finally {

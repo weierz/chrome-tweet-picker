@@ -17,6 +17,10 @@ Chrome extension (Manifest V3) for x.com / twitter.com.
 
 Buttons give feedback in place: a green check on success, a red ✕ on failure (hover it to see the error).
 
+## Settings
+
+Click the extension's toolbar icon to turn on **Like** and/or **Bookmark**: after a successful image copy or tweet share, the tweet is liked / bookmarked using X's own buttons. Tweets you've already liked or bookmarked are left as they are. Both are off by default.
+
 ## How it works
 
 - `inject.js` runs in the page and reads X's own API responses to learn each video's MP4 URLs. If a URL wasn't seen, `background.js` falls back to the public embed endpoint (`cdn.syndication.twimg.com`).
@@ -29,6 +33,7 @@ Buttons give feedback in place: a green check on success, a red ✕ on failure (
 
 - `downloads` — save videos.
 - `clipboardWrite` — copy images.
+- `storage` — remember the Like / Bookmark settings.
 - `*.twimg.com` host access — fetch images, video URLs and tweet data from X's media/embed servers.
 
 ## Notes
