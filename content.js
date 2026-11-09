@@ -12,6 +12,29 @@
     for (const [k, v] of Object.entries(e.data.tweets || {})) tweetMap.set(k, v);
   });
 
+  // ---------- settings (edited in options.html) ----------
+  const SHARE_LABELS = {
+    image: 'Copy tweet as image',
+    imageLink: 'Copy tweet as image + link',
+    link: 'Copy tweet link',
+    shareSheet: 'Share tweet (image + link)',
+  };
+  let shareMode = 'image';
+  const shareLabel = () => SHARE_LABELS[shareMode] || SHARE_LABELS.image;
+  function applyShareMode(mode) {
+    shareMode = SHARE_LABELS[mode] ? mode : 'image';
+    document.querySelectorAll('.tws-share').forEach((b) => {
+      b.title = shareLabel();
+      b.setAttribute('aria-label', shareLabel());
+    });
+  }
+  try {
+    chrome.storage.sync.get({ shareMode: 'image' }, (r) => applyShareMode(r.shareMode));
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'sync' && changes.shareMode) applyShareMode(changes.shareMode.newValue);
+    });
+  } catch (_) {}
+
   // ---------- helpers ----------
   const svg = (inner) =>
     `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
@@ -82,18 +105,17 @@
     btn.innerHTML = ICONS[action];
   }
 
-  let toastEl = null;
-  function toast(text, isError = false) {
-    if (!toastEl) {
-      toastEl = document.createElement('div');
-      toastEl.className = 'tws-toast';
-      document.body.appendChild(toastEl);
+  // Feedback lives on the button itself: green check on success, red X on
+  // failure (hover the button to see the error message).
+  function done(btn, err) {
+    if (err) {
+      btn.title = `Failed: ${err.message}`;
+      setState(btn, 'err');
+      console.warn('[Tweet Media Tools]', err);
+    } else {
+      btn.title = btn.getAttribute('aria-label');
+      setState(btn, 'ok');
     }
-    toastEl.textContent = text;
-    toastEl.classList.toggle('tws-toast-err', isError);
-    toastEl.classList.add('tws-show');
-    clearTimeout(toastEl.__t);
-    toastEl.__t = setTimeout(() => toastEl.classList.remove('tws-show'), 2500);
   }
 
   function tweetInfo(article) {
@@ -131,13 +153,13 @@
     // Tweets
     document.querySelectorAll('article[data-testid="tweet"]').forEach((article) => {
       if (article.querySelector('.tws-share')) return;
-      const groups = article.querySelectorAll('[role="group"]');
-      const group = groups[groups.length - 1];
-      if (group) {
-        group.appendChild(makeBtn('share', 'Share tweet as image', 'tws-share-inline'));
+      // Top-right of the tweet, just left of the "···" menu.
+      const caret = article.querySelector('[data-testid="caret"]');
+      if (caret && caret.parentElement) {
+        caret.parentElement.insertBefore(makeBtn('share', shareLabel(), 'tws-share-inline'), caret);
       } else {
         article.classList.add('tws-host');
-        article.appendChild(makeBtn('share', 'Share tweet as image'));
+        article.appendChild(makeBtn('share', shareLabel()));
       }
     });
   }
@@ -210,11 +232,9 @@
       // Pass a promise so the clipboard write keeps the click's user activation.
       const png = fetchAsPng(originalUrl(src)).catch(() => fetchAsPng(src));
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
-      setState(btn, 'ok');
-      toast('Image copied to clipboard');
+      done(btn);
     } catch (err) {
-      setState(btn, 'err');
-      toast(`Copy failed: ${err.message}`, true);
+      done(btn, err);
     }
   }
 
@@ -252,11 +272,9 @@
       if (!url) throw new Error('No downloadable video found');
       const { user, id } = tweetInfo(player.closest('article'));
       await bg({ type: 'download', url, filename: `${safe(user)}_${safe(id)}.mp4` });
-      setState(btn, 'ok');
-      toast('Video download started');
+      done(btn);
     } catch (err) {
-      setState(btn, 'err');
-      toast(`Download failed: ${err.message}`, true);
+      done(btn, err);
     }
   }
 
@@ -327,78 +345,76 @@
     }
   }
 
+  function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+      r.readAsDataURL(blob);
+    });
+  }
+
+  const escapeHtml = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // Image + link in one clipboard entry: apps that accept HTML get both,
+  // image-only apps take the PNG, text-only apps take the URL.
+  function imageLinkItem(pngPromise, link) {
+    const html = pngPromise.then(async (png) => {
+      const src = await blobToDataUrl(png);
+      const a = escapeHtml(link);
+      return new Blob([`<img src="${src}" alt="Tweet"><br><a href="${a}">${a}</a>`], { type: 'text/html' });
+    });
+    return new ClipboardItem({
+      'image/png': pngPromise,
+      'text/html': html,
+      'text/plain': new Blob([link], { type: 'text/plain' }),
+    });
+  }
+
+  function canShareFiles() {
+    try {
+      const probe = new File([new Uint8Array(1)], 'x.png', { type: 'image/png' });
+      return !!(navigator.share && navigator.canShare && navigator.canShare({ files: [probe] }));
+    } catch (_) {
+      return false;
+    }
+  }
+
   let capturing = false;
   async function shareTweet(btn) {
     const article = btn.closest('article');
     if (!article || capturing) return;
+    const { user, id } = tweetInfo(article);
+    const link = `${location.origin}/${user}/status/${id}`;
+    let mode = shareMode;
+    if (mode === 'shareSheet' && !canShareFiles()) mode = 'imageLink';
+
     capturing = true;
     setState(btn, 'busy');
-    const { user, id } = tweetInfo(article);
-    const blobPromise = captureElement(article);
-    let copied = false;
     try {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })]);
-      copied = true;
-    } catch (_) { /* preview still offers copy/download */ }
-    try {
-      const blob = await blobPromise;
-      setState(btn, 'ok');
-      showPreview(blob, copied, `tweet_${safe(user)}_${safe(id)}.png`);
+      if (mode === 'link') {
+        await navigator.clipboard.writeText(link);
+      } else if (mode === 'shareSheet') {
+        const png = await captureElement(article);
+        const file = new File([png], `tweet_${safe(user)}_${safe(id)}.png`, { type: 'image/png' });
+        try {
+          await navigator.share({ files: [file], title: `Tweet by @${user}`, text: link, url: link });
+        } catch (err) {
+          if (err.name === 'AbortError') { setState(btn, null); return; } // user closed the sheet
+          if (err.name === 'NotAllowedError') throw new Error('Capture took too long for the share sheet — click again');
+          throw err;
+        }
+      } else {
+        // Pass the pending capture as a promise so the write keeps the click's user activation.
+        const png = captureElement(article);
+        const item = mode === 'imageLink' ? imageLinkItem(png, link) : new ClipboardItem({ 'image/png': png });
+        await navigator.clipboard.write([item]);
+      }
+      done(btn);
     } catch (err) {
-      setState(btn, 'err');
-      toast(`Capture failed: ${err.message}`, true);
+      done(btn, err);
     } finally {
       capturing = false;
     }
-  }
-
-  function showPreview(blob, copied, filename) {
-    const url = URL.createObjectURL(blob);
-    const overlay = document.createElement('div');
-    overlay.className = 'tws-modal';
-    overlay.innerHTML = `
-      <div class="tws-modal-card" role="dialog" aria-label="Tweet image">
-        <div class="tws-modal-img"><img alt="Tweet screenshot"></div>
-        <div class="tws-modal-bar">
-          <span class="tws-modal-status"></span>
-          <button type="button" class="tws-mbtn" data-a="copy">Copy</button>
-          <button type="button" class="tws-mbtn" data-a="download">Download</button>
-          <button type="button" class="tws-mbtn tws-mbtn-ghost" data-a="close">Close</button>
-        </div>
-      </div>`;
-    overlay.querySelector('img').src = url;
-    const status = overlay.querySelector('.tws-modal-status');
-    status.textContent = copied ? 'Copied to clipboard' : '';
-
-    const close = () => {
-      overlay.remove();
-      URL.revokeObjectURL(url);
-      document.removeEventListener('keydown', onKey, true);
-    };
-    const onKey = (e) => {
-      if (e.key === 'Escape') { e.stopPropagation(); close(); }
-    };
-    document.addEventListener('keydown', onKey, true);
-
-    overlay.addEventListener('click', async (e) => {
-      if (e.target === overlay) return close();
-      const a = e.target.closest('[data-a]')?.dataset.a;
-      if (a === 'close') close();
-      else if (a === 'download') {
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        link.click();
-        status.textContent = 'Saved';
-      } else if (a === 'copy') {
-        try {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-          status.textContent = 'Copied to clipboard';
-        } catch (err) {
-          status.textContent = `Copy failed: ${err.message}`;
-        }
-      }
-    });
-    document.body.appendChild(overlay);
   }
 })();

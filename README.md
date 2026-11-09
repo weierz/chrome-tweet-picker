@@ -6,7 +6,7 @@ Chrome extension (Manifest V3) for x.com / twitter.com.
 | --- | --- |
 | Copy image | Hover a tweet photo (or the full-screen photo viewer) → click the copy button in the top-right corner. Copies the original-size image as PNG. |
 | Download video | Hover a video or GIF → click the download button in the top-right corner. Saves the highest-bitrate MP4 to your Downloads folder. |
-| Share tweet as image | Hover a tweet → click the picture icon at the end of the action bar (reply / repost / like …). The tweet is screenshotted (long tweets are stitched), copied to the clipboard, and shown in a preview with Copy / Download. |
+| Share tweet | Hover a tweet → click the picture icon in its top-right corner (next to the `···` menu). By default it copies a screenshot of the tweet (long tweets are stitched). |
 
 ## Install
 
@@ -14,6 +14,17 @@ Chrome extension (Manifest V3) for x.com / twitter.com.
 2. Turn on **Developer mode**.
 3. Click **Load unpacked** and pick this folder.
 4. Reload any open x.com tabs.
+
+## Settings
+
+Click the extension's toolbar icon (or right-click it → Options) to choose what the share button does:
+
+- **Copy image** (default) — screenshot only.
+- **Copy image + link** — screenshot and tweet URL in one clipboard entry. Rich editors (Gmail, Notion, Docs) paste both; most chat apps paste only the image.
+- **Copy link** — just the tweet URL.
+- **System share sheet** — opens the OS share menu with the image and link; falls back to *Copy image + link* where Chrome doesn't support sharing files.
+
+Buttons give feedback in place: a green check on success, a red ✕ on failure (hover it to see the error).
 
 ## How it works
 
@@ -25,6 +36,7 @@ Chrome extension (Manifest V3) for x.com / twitter.com.
 
 - `downloads` — save videos.
 - `clipboardWrite` — copy images.
+- `storage` — remember the share setting.
 - `<all_urls>` host access — required by Chrome for `captureVisibleTab` when it's triggered from the page rather than the toolbar, and for fetching from `pbs.twimg.com` / `video.twimg.com`.
 
 ## Notes

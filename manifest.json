@@ -3,10 +3,29 @@
   "name": "Tweet Media Tools",
   "version": "1.0.0",
   "description": "On X/Twitter: copy images on hover, download videos, and share any tweet as an image.",
-  "permissions": ["downloads", "clipboardWrite"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": [
+    "downloads",
+    "clipboardWrite",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "background": {
     "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "options.html",
+    "default_title": "Tweet Media Tools settings",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false
   },
   "content_scripts": [
     {
@@ -16,7 +35,9 @@
         "https://mobile.x.com/*",
         "https://mobile.twitter.com/*"
       ],
-      "js": ["inject.js"],
+      "js": [
+        "inject.js"
+      ],
       "run_at": "document_start",
       "world": "MAIN"
     },
@@ -27,8 +48,12 @@
         "https://mobile.x.com/*",
         "https://mobile.twitter.com/*"
       ],
-      "js": ["content.js"],
-      "css": ["content.css"],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
       "run_at": "document_start"
     }
   ],
