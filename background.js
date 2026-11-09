@@ -1,6 +1,28 @@
 // Service worker: does the work content scripts can't (cross-origin fetch,
 // downloads).
 
+// After an install or update, open X tabs still run the old content script,
+// which can no longer reach this worker. Inject the new one so copy and share
+// keep working without a page refresh (content.js retires the old copy).
+chrome.runtime.onInstalled.addListener(async ({ reason }) => {
+  if (reason !== 'install' && reason !== 'update') return;
+  const groups = chrome.runtime.getManifest().content_scripts || [];
+  const urls = [...new Set(groups.flatMap((g) => g.matches))];
+  const tabs = await chrome.tabs.query({ url: urls });
+  for (const tab of tabs) {
+    if (tab.discarded) continue; // reloads on its own when next opened
+    const target = { tabId: tab.id };
+    for (const g of groups) {
+      try {
+        if (g.css) await chrome.scripting.insertCSS({ target, files: g.css });
+        if (g.js) {
+          await chrome.scripting.executeScript({ target, files: g.js, world: g.world || 'ISOLATED' });
+        }
+      } catch (_) {} // tab closed or not scriptable; nothing to fix there
+    }
+  }
+});
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   handle(msg, sender).then(
     (result) => sendResponse({ ok: true, ...result }),

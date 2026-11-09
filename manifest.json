@@ -6,10 +6,15 @@
   "permissions": [
     "downloads",
     "clipboardWrite",
-    "storage"
+    "storage",
+    "scripting"
   ],
   "host_permissions": [
-    "https://*.twimg.com/*"
+    "https://*.twimg.com/*",
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "https://mobile.x.com/*",
+    "https://mobile.twitter.com/*"
   ],
   "background": {
     "service_worker": "background.js"

@@ -2,13 +2,27 @@
 (() => {
   'use strict';
 
+  // ---------- handover on extension update ----------
+  // When the extension is updated or reloaded, this copy loses its link to the
+  // extension, and background.js injects a fresh copy into the open tab. The
+  // fresh copy announces itself; this one then goes quiet and lets it handle
+  // everything, including the buttons already on the page.
+  let retired = false;
+  let observer = null;
+  const TAKEOVER = 'tws-takeover';
+  document.dispatchEvent(new CustomEvent(TAKEOVER));
+  document.addEventListener(TAKEOVER, () => {
+    retired = true;
+    observer && observer.disconnect();
+  }, { once: true });
+
   // ---------- video URL cache (fed by inject.js) ----------
   const mediaMap = new Map(); // media id -> mp4 url
   const tweetMap = new Map(); // tweet id -> [{ mediaId, url }]
   const models = new Map();   // tweet id -> full tweet data (see card.js)
 
   window.addEventListener('message', (e) => {
-    if (e.source !== window || !e.data || e.data.__tws !== 'media') return;
+    if (retired || e.source !== window || !e.data || e.data.__tws !== 'media') return;
     for (const [k, v] of Object.entries(e.data.media || {})) mediaMap.set(k, v);
     for (const [k, v] of Object.entries(e.data.tweets || {})) tweetMap.set(k, v);
     for (const [k, v] of Object.entries(e.data.models || {})) models.set(k, v);
@@ -21,7 +35,7 @@
   try {
     chrome.storage.sync.get(settings, (r) => { Object.assign(settings, r); expandTweets(); });
     chrome.storage.onChanged.addListener((changes, area) => {
-      if (area !== 'sync') return;
+      if (retired || area !== 'sync') return;
       for (const k of Object.keys(changes)) if (k in settings) settings[k] = changes[k].newValue;
       if (changes.autoExpand) expandTweets();
     });
@@ -231,12 +245,14 @@
   function schedule() {
     if (scheduled) return;
     scheduled = true;
-    setTimeout(() => requestAnimationFrame(() => { scheduled = false; decorate(); }), 150);
+    setTimeout(() => requestAnimationFrame(() => { scheduled = false; if (!retired) decorate(); }), 150);
   }
 
   function start() {
+    if (retired) return;
     decorate();
-    new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+    observer = new MutationObserver(schedule);
+    observer.observe(document.body, { childList: true, subtree: true });
   }
   if (document.body) start();
   else document.addEventListener('DOMContentLoaded', start, { once: true });
@@ -246,13 +262,14 @@
   // toggle the video, or navigate to the tweet.
   for (const type of ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'touchstart', 'touchend', 'dblclick']) {
     window.addEventListener(type, (e) => {
-      if (!(e.target instanceof Element) || !e.target.closest('.tws-btn')) return;
+      if (retired || !(e.target instanceof Element) || !e.target.closest('.tws-btn')) return;
       e.stopImmediatePropagation();
       if (type === 'mousedown') e.preventDefault();
     }, true);
   }
 
   window.addEventListener('click', (e) => {
+    if (retired) return;
     const btn = e.target instanceof Element && e.target.closest('.tws-btn');
     if (!btn) return;
     e.preventDefault();
@@ -551,7 +568,7 @@
   let hoverTimer = 0;
   let hoverTarget = null;
   document.addEventListener('mouseover', (e) => {
-    if (!(e.target instanceof Element)) return;
+    if (retired || !(e.target instanceof Element)) return;
     const host = e.target.closest('.tws-host');
     const target = (host && host.querySelector(':scope > .tws-copy') && host) ||
       e.target.closest('article[data-testid="tweet"]');

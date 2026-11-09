@@ -13,7 +13,8 @@ Chrome extension (Manifest V3) for x.com / twitter.com.
 1. Open `chrome://extensions`.
 2. Turn on **Developer mode**.
 3. Click **Load unpacked** and pick this folder.
-4. Reload any open x.com tabs.
+
+Open x.com tabs pick up the extension (and later updates) on their own; no refresh needed.
 
 Buttons give feedback in place: a green check on success, a red ✕ on failure (hover it to see the error).
 
@@ -38,6 +39,7 @@ The share card shows each tweet as you see it on the page: if you've pressed X's
 - `downloads` — save videos.
 - `clipboardWrite` — copy images.
 - `storage` — remember the Like / Bookmark / Expand settings.
+- `scripting` + x.com / twitter.com hosts — after an install or update, load the new version into tabs that are already open (the same sites the content scripts already run on).
 - `*.twimg.com` host access — fetch images, video URLs and tweet data from X's media/embed servers.
 
 ## Notes
