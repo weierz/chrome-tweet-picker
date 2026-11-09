@@ -16,8 +16,6 @@
   const SHARE_LABELS = {
     image: 'Copy tweet as image',
     imageLink: 'Copy tweet as image + link',
-    link: 'Copy tweet link',
-    shareSheet: 'Share tweet (image + link)',
   };
   let shareMode = 'image';
   const shareLabel = () => SHARE_LABELS[shareMode] || SHARE_LABELS.image;
@@ -371,45 +369,20 @@
     });
   }
 
-  function canShareFiles() {
-    try {
-      const probe = new File([new Uint8Array(1)], 'x.png', { type: 'image/png' });
-      return !!(navigator.share && navigator.canShare && navigator.canShare({ files: [probe] }));
-    } catch (_) {
-      return false;
-    }
-  }
-
   let capturing = false;
   async function shareTweet(btn) {
     const article = btn.closest('article');
     if (!article || capturing) return;
     const { user, id } = tweetInfo(article);
     const link = `${location.origin}/${user}/status/${id}`;
-    let mode = shareMode;
-    if (mode === 'shareSheet' && !canShareFiles()) mode = 'imageLink';
 
     capturing = true;
     setState(btn, 'busy');
     try {
-      if (mode === 'link') {
-        await navigator.clipboard.writeText(link);
-      } else if (mode === 'shareSheet') {
-        const png = await captureElement(article);
-        const file = new File([png], `tweet_${safe(user)}_${safe(id)}.png`, { type: 'image/png' });
-        try {
-          await navigator.share({ files: [file], title: `Tweet by @${user}`, text: link, url: link });
-        } catch (err) {
-          if (err.name === 'AbortError') { setState(btn, null); return; } // user closed the sheet
-          if (err.name === 'NotAllowedError') throw new Error('Capture took too long for the share sheet — click again');
-          throw err;
-        }
-      } else {
-        // Pass the pending capture as a promise so the write keeps the click's user activation.
-        const png = captureElement(article);
-        const item = mode === 'imageLink' ? imageLinkItem(png, link) : new ClipboardItem({ 'image/png': png });
-        await navigator.clipboard.write([item]);
-      }
+      // Pass the pending capture as a promise so the write keeps the click's user activation.
+      const png = captureElement(article);
+      const item = shareMode === 'imageLink' ? imageLinkItem(png, link) : new ClipboardItem({ 'image/png': png });
+      await navigator.clipboard.write([item]);
       done(btn);
     } catch (err) {
       done(btn, err);

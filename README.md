@@ -21,8 +21,6 @@ Click the extension's toolbar icon (or right-click it → Options) to choose wha
 
 - **Copy image** (default) — screenshot only.
 - **Copy image + link** — screenshot and tweet URL in one clipboard entry. Rich editors (Gmail, Notion, Docs) paste both; most chat apps paste only the image.
-- **Copy link** — just the tweet URL.
-- **System share sheet** — opens the OS share menu with the image and link; falls back to *Copy image + link* where Chrome doesn't support sharing files.
 
 Buttons give feedback in place: a green check on success, a red ✕ on failure (hover it to see the error).
 
