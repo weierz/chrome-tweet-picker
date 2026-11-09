@@ -1,5 +1,5 @@
 // Service worker: does the work content scripts can't (cross-origin fetch,
-// tab screenshots, downloads).
+// downloads).
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   handle(msg, sender).then(
@@ -17,10 +17,8 @@ async function handle(msg, sender) {
       const buf = await res.arrayBuffer();
       return { b64: toBase64(buf), mime: res.headers.get('content-type') || 'image/jpeg' };
     }
-    case 'capture': {
-      const dataUrl = await chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: 'png' });
-      return { dataUrl };
-    }
+    case 'syndication':
+      return { data: await fetchSyndication(msg.tweetId) };
     case 'download': {
       const id = await chrome.downloads.download({
         url: msg.url,
@@ -57,14 +55,18 @@ function bestMp4(variants) {
 
 // Fallback when the video URL wasn't seen in X's own API traffic:
 // the public embed (syndication) endpoint returns the tweet's media variants.
-async function resolveVideo(tweetId, mediaId, index) {
+async function fetchSyndication(tweetId) {
   const token = ((Number(tweetId) / 1e15) * Math.PI).toString(36).replace(/(0+|\.)/g, '');
   const res = await fetch(
     `https://cdn.syndication.twimg.com/tweet-result?id=${encodeURIComponent(tweetId)}&token=${token}&lang=en`,
     { credentials: 'omit' }
   );
   if (!res.ok) throw new Error(`Lookup failed (HTTP ${res.status})`);
-  const data = await res.json();
+  return res.json();
+}
+
+async function resolveVideo(tweetId, mediaId, index) {
+  const data = await fetchSyndication(tweetId);
 
   const videos = [];
   const collect = (t) => {

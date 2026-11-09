@@ -8,7 +8,7 @@
     "clipboardWrite"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "https://*.twimg.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -35,6 +35,7 @@
         "https://mobile.twitter.com/*"
       ],
       "js": [
+        "card.js",
         "content.js"
       ],
       "css": [

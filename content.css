@@ -45,6 +45,3 @@ article:hover .tws-share-inline { opacity: 1; }
 .tws-btn.tws-share-inline:hover { background: rgba(29, 155, 240, 0.1); color: rgb(29, 155, 240); }
 .tws-btn.tws-share-inline.tws-ok { background: transparent; color: #00ba7c; }
 .tws-btn.tws-share-inline.tws-err { background: transparent; color: #f4212e; }
-
-/* Hidden while screenshotting a tweet */
-.tws-capturing .tws-btn { visibility: hidden !important; }

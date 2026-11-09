@@ -6,7 +6,7 @@ Chrome extension (Manifest V3) for x.com / twitter.com.
 | --- | --- |
 | Copy image | Hover a tweet photo (or the full-screen photo viewer) → click the copy button in the top-right corner. Copies the original-size image as PNG. |
 | Download video | Hover a video or GIF → click the download button in the top-right corner. Saves the highest-bitrate MP4 to your Downloads folder. |
-| Share tweet | Hover a tweet → click the picture icon in its top-right corner (next to the `···` menu). Click copies a screenshot of the tweet (long tweets are stitched). **Shift-click** copies the screenshot plus the tweet link — rich editors (Gmail, Notion, Docs) paste both, most chat apps paste only the image. |
+| Share tweet | Hover a tweet → click the picture icon in its top-right corner (next to the `···` menu). Click copies the tweet as a clean image card — full text (no "Show more" cut-off), every image uncropped, quoted tweet, date and counts, in your X theme. The page doesn't scroll or flash. **Shift-click** copies the image plus the tweet link — rich editors (Gmail, Notion, Docs) paste both, most chat apps paste only the image. |
 
 ## Install
 
@@ -20,16 +20,17 @@ Buttons give feedback in place: a green check on success, a red ✕ on failure (
 ## How it works
 
 - `inject.js` runs in the page and reads X's own API responses to learn each video's MP4 URLs. If a URL wasn't seen, `background.js` falls back to the public embed endpoint (`cdn.syndication.twimg.com`).
-- `content.js` adds the hover buttons and does the image conversion / screenshot stitching.
-- `background.js` fetches images cross-origin, takes tab screenshots (`captureVisibleTab`), and starts downloads.
+- `inject.js` also keeps each tweet's full data (long-tweet text, media, quoted tweet, counts) for the share card.
+- `card.js` draws the share card on a canvas. If X's data for a tweet wasn't seen, it uses the embed endpoint, then the visible page as a last resort.
+- `content.js` adds the hover buttons and handles the clipboard.
+- `background.js` fetches images cross-origin and starts downloads.
 
 ## Permissions
 
 - `downloads` — save videos.
 - `clipboardWrite` — copy images.
-- `<all_urls>` host access — required by Chrome for `captureVisibleTab` when it's triggered from the page rather than the toolbar, and for fetching from `pbs.twimg.com` / `video.twimg.com`.
+- `*.twimg.com` host access — fetch images, video URLs and tweet data from X's media/embed servers.
 
 ## Notes
 
 - X changes its markup often; selectors live at the top of `decorate()` in `content.js`.
-- While a tweet is being captured, X's sticky header and floating elements are hidden briefly and the page may scroll; it returns to where it was.

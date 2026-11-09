@@ -5,11 +5,13 @@
   // ---------- video URL cache (fed by inject.js) ----------
   const mediaMap = new Map(); // media id -> mp4 url
   const tweetMap = new Map(); // tweet id -> [{ mediaId, url }]
+  const models = new Map();   // tweet id -> full tweet data (see card.js)
 
   window.addEventListener('message', (e) => {
     if (e.source !== window || !e.data || e.data.__tws !== 'media') return;
     for (const [k, v] of Object.entries(e.data.media || {})) mediaMap.set(k, v);
     for (const [k, v] of Object.entries(e.data.tweets || {})) tweetMap.set(k, v);
+    for (const [k, v] of Object.entries(e.data.models || {})) models.set(k, v);
   });
 
   const SHARE_LABEL = 'Copy tweet as image (Shift-click: image + link)';
@@ -47,17 +49,6 @@
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     return new Blob([bytes], { type: mime });
   }
-
-  function dataUrlToBlob(dataUrl) {
-    const [head, b64] = dataUrl.split(',');
-    return b64ToBlob(b64, head.slice(5, head.indexOf(';')));
-  }
-
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const frames = (n) => new Promise((r) => {
-    const step = () => (--n <= 0 ? r() : requestAnimationFrame(step));
-    requestAnimationFrame(step);
-  });
 
   function makeBtn(action, label, extraClass = '') {
     const b = document.createElement('button');
@@ -258,70 +249,100 @@
   }
 
   // ---------- 3. share tweet as image ----------
-  function hideOverlays(el) {
-    const r = el.getBoundingClientRect();
-    const hidden = [];
-    for (const node of document.body.querySelectorAll('*')) {
-      if (node === el || node.contains(el) || el.contains(node)) continue;
-      const pos = getComputedStyle(node).position;
-      if (pos !== 'fixed' && pos !== 'sticky') continue;
-      const nr = node.getBoundingClientRect();
-      if (!nr.width || !nr.height || nr.right <= r.left || nr.left >= r.right) continue;
-      hidden.push([node, node.style.getPropertyValue('visibility'), node.style.getPropertyPriority('visibility')]);
-      node.style.setProperty('visibility', 'hidden', 'important');
-    }
-    return () => {
-      for (const [node, value, prio] of hidden) {
-        if (value) node.style.setProperty('visibility', value, prio);
-        else node.style.removeProperty('visibility');
-      }
+  // The image is drawn from the tweet's data (card.js), not screenshotted,
+  // so nothing on the page moves and long text / all images are included.
+
+  function fromSyndication(d, depth = 0) {
+    if (!d || !d.id_str) return null;
+    const media = (d.mediaDetails || []).map((m) => ({
+      type: m.type,
+      url: m.media_url_https,
+      w: m.original_info && m.original_info.width,
+      h: m.original_info && m.original_info.height,
+    }));
+    const quote = depth < 1 ? fromSyndication(d.quoted_tweet, depth + 1) : null;
+    const entities = d.entities || {};
+    const body = TwsCard.cleanText(d.text, d.display_text_range, entities.urls,
+      entities.media || d.mediaDetails, quote && quote.id);
+    const u = d.user || {};
+    return {
+      id: d.id_str,
+      user: { name: u.name, handle: u.screen_name, avatar: u.profile_image_url_https, verified: !!(u.is_blue_verified || u.verified) },
+      createdAt: d.created_at,
+      text: body.text,
+      links: body.links,
+      media,
+      quote,
+      counts: { replies: d.conversation_count, likes: d.favorite_count },
     };
   }
 
-  async function captureElement(el) {
-    const root = document.documentElement;
-    root.classList.add('tws-capturing');
-    const restoreOverlays = hideOverlays(el);
-    const startX = window.scrollX;
-    const startY = window.scrollY;
+  // Last resort: read what's on the page (text may be cut at "Show more").
+  function fromDom(article, info) {
+    const nameEl = article.querySelector('[data-testid="User-Name"] a span');
+    const media = [];
+    article.querySelectorAll('[data-testid="tweetPhoto"] img[src*="/media/"], video[poster]').forEach((el) => {
+      if (el.tagName === 'VIDEO') media.push({ type: 'video', url: el.poster });
+      else media.push({ type: 'photo', url: el.src });
+    });
+    return {
+      id: info.id,
+      user: {
+        name: nameEl ? nameEl.innerText : info.user,
+        handle: info.user,
+        avatar: article.querySelector('[data-testid="Tweet-User-Avatar"] img')?.src || '',
+        verified: !!article.querySelector('[data-testid="icon-verified"]'),
+      },
+      createdAt: article.querySelector('time')?.getAttribute('datetime'),
+      text: article.querySelector('[data-testid="tweetText"]')?.innerText || '',
+      links: [],
+      media,
+      quote: null,
+      counts: {},
+    };
+  }
+
+  async function tweetModel(article) {
+    const info = tweetInfo(article);
+    if (models.has(info.id)) return models.get(info.id);
     try {
-      const r0 = el.getBoundingClientRect();
-      const width = r0.width;
-      const height = r0.height;
-      const absTop = r0.top + window.scrollY;
-      let canvas = null, ctx = null, scale = 1;
-      let y = 0, lastShot = 0;
+      const { data } = await bg({ type: 'syndication', tweetId: info.id });
+      const t = fromSyndication(data);
+      if (t) return t;
+    } catch (_) {}
+    return fromDom(article, info);
+  }
 
-      while (y < height - 0.5) {
-        window.scrollTo(startX, absTop + y);
-        await frames(2);
-        const wait = 550 - (Date.now() - lastShot); // captureVisibleTab is rate-limited to 2/s
-        if (wait > 0) await sleep(wait);
-
-        const r = el.getBoundingClientRect();
-        const { dataUrl } = await bg({ type: 'capture' });
-        lastShot = Date.now();
-        const bmp = await createImageBitmap(dataUrlToBlob(dataUrl));
-        if (!canvas) {
-          scale = bmp.width / window.innerWidth;
-          canvas = new OffscreenCanvas(Math.round(width * scale), Math.round(height * scale));
-          ctx = canvas.getContext('2d');
-        }
-        const srcTop = Math.max(r.top + y, 0);
-        const h = Math.min(r.bottom, window.innerHeight) - srcTop;
-        if (h <= 0) { bmp.close(); break; }
-        ctx.drawImage(bmp, r.left * scale, srcTop * scale, width * scale, h * scale,
-          0, y * scale, width * scale, h * scale);
-        bmp.close();
-        y += h;
-      }
-      if (!canvas) throw new Error('Nothing to capture');
-      return await canvas.convertToBlob({ type: 'image/png' });
-    } finally {
-      restoreOverlays();
-      root.classList.remove('tws-capturing');
-      window.scrollTo(startX, startY);
+  function largeUrl(url) {
+    try {
+      const u = new URL(url);
+      if (!/(^|\.)twimg\.com$/.test(u.hostname) || !/\/(media|\w*video_thumb)\//.test(u.pathname)) return url;
+      u.searchParams.set('name', 'large');
+      return u.href;
+    } catch (_) {
+      return url;
     }
+  }
+
+  async function loadImage(url) {
+    const get = async (u) => {
+      const r = await bg({ type: 'fetch', url: u });
+      return createImageBitmap(b64ToBlob(r.b64, r.mime));
+    };
+    const big = largeUrl(url);
+    return big === url ? get(url) : get(big).catch(() => get(url));
+  }
+
+  function pageTheme() {
+    const m = (getComputedStyle(document.body).backgroundColor.match(/\d+/g) || []).map(Number);
+    if (m.length < 3 || (m.length > 3 && m[3] === 0)) return 'light';
+    if (m[0] + m[1] + m[2] > 600) return 'light';
+    return m[2] > 30 ? 'dim' : 'dark';
+  }
+
+  async function renderTweet(article) {
+    const model = await tweetModel(article);
+    return TwsCard.render(model, { theme: pageTheme(), loadImage });
   }
 
   function blobToDataUrl(blob) {
@@ -350,25 +371,25 @@
     });
   }
 
-  let capturing = false;
+  let rendering = false;
   async function shareTweet(btn, withLink) {
     const article = btn.closest('article');
-    if (!article || capturing) return;
+    if (!article || rendering) return;
     const { user, id } = tweetInfo(article);
     const link = `${location.origin}/${user}/status/${id}`;
 
-    capturing = true;
+    rendering = true;
     setState(btn, 'busy');
     try {
-      // Pass the pending capture as a promise so the write keeps the click's user activation.
-      const png = captureElement(article);
+      // Pass the pending render as a promise so the write keeps the click's user activation.
+      const png = renderTweet(article);
       const item = withLink ? imageLinkItem(png, link) : new ClipboardItem({ 'image/png': png });
       await navigator.clipboard.write([item]);
       done(btn);
     } catch (err) {
       done(btn, err);
     } finally {
-      capturing = false;
+      rendering = false;
     }
   }
 })();
