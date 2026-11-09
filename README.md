@@ -21,10 +21,13 @@ Buttons give feedback in place: a green check on success, a red ✕ on failure (
 
 Click the extension's toolbar icon to turn on **Like** and/or **Bookmark**: after a successful image copy or tweet share, the tweet is liked / bookmarked using X's own buttons. Tweets you've already liked or bookmarked are left as they are. Both are off by default.
 
+**Translate**: the share card uses X's own Grok translation when a tweet (or its quoted tweet) isn't in your X language, with a small "Translated from …" note. If the translation fails, the original text is used. Off by default.
+
 ## How it works
 
 - `inject.js` runs in the page and reads X's own API responses to learn each video's MP4 URLs. If a URL wasn't seen, `background.js` falls back to the public embed endpoint (`cdn.syndication.twimg.com`).
 - `inject.js` also keeps each tweet's full data (long-tweet text, media, link preview, quoted tweet, counts) for the share card.
+- `inject.js` also bridges translation requests to X's own translate endpoint, reusing the headers X's web app sends; they stay in the page.
 - `card.js` draws the share card on a canvas. If X's data for a tweet wasn't seen, it uses the embed endpoint, then the visible page as a last resort.
 - `content.js` adds the hover buttons and handles the clipboard.
 - `background.js` fetches images cross-origin and starts downloads.
@@ -33,7 +36,7 @@ Click the extension's toolbar icon to turn on **Like** and/or **Bookmark**: afte
 
 - `downloads` — save videos.
 - `clipboardWrite` — copy images.
-- `storage` — remember the Like / Bookmark settings.
+- `storage` — remember the Like / Bookmark / Translate settings.
 - `*.twimg.com` host access — fetch images, video URLs and tweet data from X's media/embed servers.
 
 ## Notes

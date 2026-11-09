@@ -1,4 +1,4 @@
-const DEFAULTS = { autoLike: false, autoBookmark: false };
+const DEFAULTS = { autoLike: false, autoBookmark: false, translate: false };
 const form = document.getElementById('form');
 
 chrome.storage.sync.get(DEFAULTS, (s) => {

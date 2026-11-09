@@ -303,6 +303,18 @@
   }
 
 
+  function translatedNote(L, lang, x, y, size) {
+    let name = lang;
+    try { name = new Intl.DisplayNames(['en'], { type: 'language' }).of(lang) || lang; } catch (_) {}
+    const th = L.th;
+    const font = `400 ${size}px ${FONT}`;
+    L.ops.push((ctx) => {
+      ctx.font = font; ctx.fillStyle = th.muted; ctx.textBaseline = 'middle';
+      ctx.fillText(`Translated from ${name}`, x, y + size * 0.7);
+    });
+    return y + size * 1.4;
+  }
+
   // Link preview ("summary_large_image" / "summary" cards).
   function linkCardBlock(L, card, x, y, w) {
     const th = L.th;
@@ -498,6 +510,7 @@
 
     y = userLine(L, model.user || {}, PAD, y, 48, 17, false, innerW);
     if (text) y = textBlock(L, text, model.links, PAD, y + 12, innerW, 18, 26, th.text);
+    if (text && model.translatedFrom) y = translatedNote(L, model.translatedFrom, PAD, y + 4, 14);
     if (model.media && model.media.length) y = mediaBlock(L, model.media, PAD, y + 14, innerW, innerW * 1.2, 16);
     if (card) {
       if (cardUrlAbove) y = textBlock(L, card.url, [card.url], PAD, y + (text ? 6 : 12), innerW, 18, 26, th.text);
@@ -509,6 +522,7 @@
       const top = y + 14, ip = 14, qInner = innerW - ip * 2;
       let qy = userLine(L, q.user || {}, PAD + ip, top + ip, 22, 15, true, qInner);
       if (q.text) qy = textBlock(L, q.text, q.links, PAD + ip, qy + 6, qInner, 15, 21, th.text);
+      if (q.text && q.translatedFrom) qy = translatedNote(L, q.translatedFrom, PAD + ip, qy + 2, 13);
       if (q.media && q.media.length) qy = mediaBlock(L, q.media, PAD + ip, qy + 10, qInner, qInner, 12);
       const bottom = qy + ip;
       L.ops.push((ctx) => {

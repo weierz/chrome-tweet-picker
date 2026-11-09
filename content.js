@@ -14,10 +14,27 @@
     for (const [k, v] of Object.entries(e.data.models || {})) models.set(k, v);
   });
 
+  // Ask inject.js (page world) to translate a tweet with X's own Grok translation.
+  const pendingTranslations = new Map();
+  let translationSeq = 0;
+  window.addEventListener('message', (e) => {
+    if (e.source !== window || !e.data || e.data.__tws !== 'translation') return;
+    const done = pendingTranslations.get(e.data.reqId);
+    if (done) { pendingTranslations.delete(e.data.reqId); done(e.data.text || ''); }
+  });
+  function requestTranslation(id) {
+    return new Promise((resolve) => {
+      const reqId = ++translationSeq;
+      pendingTranslations.set(reqId, resolve);
+      window.postMessage({ __tws: 'translate', id, reqId }, location.origin);
+      setTimeout(() => { if (pendingTranslations.delete(reqId)) resolve(''); }, 10000);
+    });
+  }
+
   const SHARE_LABEL = 'Copy tweet as image';
 
   // ---------- settings (toolbar popup, options.html) ----------
-  const settings = { autoLike: false, autoBookmark: false };
+  const settings = { autoLike: false, autoBookmark: false, translate: false };
   try {
     chrome.storage.sync.get(settings, (r) => Object.assign(settings, r));
     chrome.storage.onChanged.addListener((changes, area) => {
@@ -323,6 +340,7 @@
     const u = d.user || {};
     return {
       id: d.id_str,
+      lang: d.lang,
       user: { name: u.name, handle: u.screen_name, avatar: u.profile_image_url_https, verified: !!(u.is_blue_verified || u.verified) },
       createdAt: d.created_at,
       text: body.text,
@@ -377,6 +395,7 @@
     });
     return {
       id: info.id,
+      lang: article.querySelector('[data-testid="tweetText"]')?.getAttribute('lang') || '',
       user: {
         name: nameEl ? nameEl.innerText : info.user,
         handle: info.user,
@@ -442,8 +461,26 @@
     return m[2] > 30 ? 'dim' : 'dark';
   }
 
+  // Swap in X's translation when the tweet isn't in the page's (X UI) language.
+  async function translateTweet(t) {
+    const target = (document.documentElement.lang || 'en').toLowerCase().split('-')[0];
+    const one = async (x) => {
+      const lang = (x && x.lang || '').toLowerCase();
+      if (!x || !x.text || !lang || ['und', 'zxx', 'qme', 'qam', 'qct', 'qht', 'qst', 'art'].includes(lang) ||
+          lang.split('-')[0] === target) return x;
+      let text = await requestTranslation(x.id);
+      if (!text) return x;
+      for (const u of x.cardUrls || []) if (u.url && u.expanded_url) text = text.split(u.url).join(u.expanded_url);
+      text = text.replace(/\s*https:\/\/t\.co\/\w+/g, '').trim(); // media links
+      return { ...x, text, translatedFrom: lang };
+    };
+    const [main, quote] = await Promise.all([one(t), one(t.quote)]);
+    return { ...main, quote };
+  }
+
   async function renderTweet(article) {
-    const model = await tweetModel(article);
+    let model = await tweetModel(article);
+    if (settings.translate) model = await translateTweet(model);
     return TwsCard.render(model, { theme: pageTheme(), loadImage });
   }
 

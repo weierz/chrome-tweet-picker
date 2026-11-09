@@ -73,6 +73,7 @@
     const card = o.card && o.card.legacy;
     return {
       id: o.rest_id,
+      lang: l.lang,
       user: userOf(o.core && o.core.user_results),
       createdAt: l.created_at,
       text: body.text,
@@ -137,6 +138,43 @@
     }
     if (found) window.postMessage({ __tws: 'media', media, tweets, models }, location.origin);
   }
+
+  // ---- translation (X's own Grok translate endpoint) ----
+  // X's API needs the same headers X's web app sends. They are copied from
+  // X's own requests and never leave this page world.
+  const AUTH_HEADERS = ['authorization', 'x-twitter-auth-type', 'x-twitter-active-user', 'x-twitter-client-language'];
+  const apiHeaders = {};
+  const origSetHeader = XMLHttpRequest.prototype.setRequestHeader;
+  XMLHttpRequest.prototype.setRequestHeader = function (k, v) {
+    try {
+      const key = String(k).toLowerCase();
+      if (AUTH_HEADERS.includes(key) && this.__twsUrl && API_RE.test(this.__twsUrl)) apiHeaders[key] = v;
+    } catch (_) {}
+    return origSetHeader.apply(this, arguments);
+  };
+
+  async function translate(id) {
+    if (!apiHeaders.authorization) throw new Error('not ready');
+    const csrf = (document.cookie.match(/(?:^|;\s*)ct0=([^;]+)/) || [])[1] || '';
+    const res = await origFetch('https://api.x.com/2/grok/translation.json', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { ...apiHeaders, 'content-type': 'application/json', 'x-csrf-token': csrf },
+      body: JSON.stringify({ content_type: 'POST', id: String(id), dst_lang: apiHeaders['x-twitter-client-language'] || 'en' }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return (data && data.result && data.result.text) || '';
+  }
+
+  window.addEventListener('message', (e) => {
+    if (e.source !== window || !e.data || e.data.__tws !== 'translate') return;
+    const { id, reqId } = e.data;
+    translate(id).then(
+      (text) => window.postMessage({ __tws: 'translation', reqId, text }, location.origin),
+      (err) => window.postMessage({ __tws: 'translation', reqId, error: String(err && err.message) }, location.origin)
+    );
+  });
 
   // XHR
   const origOpen = XMLHttpRequest.prototype.open;
