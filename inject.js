@@ -66,9 +66,11 @@
     const quoteRaw = o.quoted_status_result && o.quoted_status_result.result;
     const quote = depth < 1 ? tweetOf(quoteRaw, depth + 1) : null;
     const quoteId = (quote && quote.id) || l.quoted_status_id_str;
+    const urls = note ? note.entity_set && note.entity_set.urls : l.entities && l.entities.urls;
     const body = note
-      ? cleanText(note.text || '', null, note.entity_set && note.entity_set.urls, mediaList, quoteId)
-      : cleanText(l.full_text, l.display_text_range, l.entities && l.entities.urls, mediaList, quoteId);
+      ? cleanText(note.text || '', null, urls, mediaList, quoteId)
+      : cleanText(l.full_text, l.display_text_range, urls, mediaList, quoteId);
+    const card = o.card && o.card.legacy;
     return {
       id: o.rest_id,
       user: userOf(o.core && o.core.user_results),
@@ -82,6 +84,10 @@
         h: m.original_info && m.original_info.height,
       })),
       quote,
+      // Link preview; parsed by card.js in the content script.
+      cardRaw: card ? { name: card.name, url: card.url, binding_values: card.binding_values } : null,
+      cardUrls: (urls || []).concat((l.entities && l.entities.urls) || [])
+        .map((u) => ({ url: u.url, expanded_url: u.expanded_url })),
       counts: {
         replies: l.reply_count,
         reposts: l.retweet_count,

@@ -4,8 +4,12 @@
 // model = {
 //   id, user: { name, handle, avatar, verified }, createdAt, text, links: [displayUrl],
 //   media: [{ type: 'photo'|'video'|'animated_gif', url, w, h }],
-//   quote: model | null, counts: { replies, reposts, likes, views }
+//   quote: model | null, counts: { replies, reposts, likes, views },
+//   card: { url, large, title, domain, description, image: { url, w, h } } | null,   // link preview
+//   url,                                                                        // tweet permalink
 // }
+// opts.footer: 'date' | 'inline' | 'stacked' | 'bar' — where the tweet link goes.
+// opts.cardLink: 'above' | 'below' — where the link preview's full URL goes.
 (() => {
   'use strict';
 
@@ -291,7 +295,168 @@
     return y + 20;
   }
 
-  async function render(model, { theme = 'light', loadImage }) {
+  // Link preview ("summary_large_image" / "summary" cards).
+  function linkCardBlock(L, card, x, y, w) {
+    const th = L.th;
+    const bmp = card.image && L.imgs.get(card.image.url);
+    const R = 16;
+    if (card.large && (bmp || card.image)) {
+      const ar = bmp ? bmp.width / bmp.height : (card.image.w && card.image.h ? card.image.w / card.image.h : 1.91);
+      const h = Math.min(w / ar, w * 1.2);
+      const capFont = `400 15px ${FONT}`;
+      L.m.font = capFont;
+      const title = card.title ? fit(L.m, card.title, w - 48) : '';
+      const tw = title ? L.m.measureText(title).width : 0;
+      const top = y;
+      L.ops.push((ctx) => {
+        drawMedia(ctx, { m: { type: 'photo' }, bmp }, x, top, w, h, R, th);
+        if (!title) return;
+        const ph = 28, px = x + 12, py = top + h - 12 - ph;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.77)';
+        ctx.beginPath();
+        ctx.roundRect(px, py, tw + 20, ph, 4);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = capFont;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(title, px + 10, py + ph / 2);
+      });
+      y += h;
+      if (card.url && L.cardLink === 'below') {
+        return textBlock(L, card.url, [card.url], x, y + 4, w, 14, 20, th.muted);
+      }
+      if (card.domain && !L.cardUrlShown) {
+        const dy = y + 4;
+        L.ops.push((ctx) => {
+          ctx.font = `400 14px ${FONT}`;
+          ctx.fillStyle = th.muted;
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`From ${card.domain}`, x, dy + 10);
+        });
+        y = dy + 20;
+      }
+      return y;
+    }
+
+    // Small card: thumbnail on the left, text on the right.
+    const H = 120, tx = x + (bmp ? H + 14 : 14), tw = x + w - 14 - tx;
+    const lines = [];
+    const add = (text, font, color, max) => {
+      if (!text) return;
+      L.m.font = font;
+      const wrapped = wrap(L.m, text, tw, []).slice(0, max)
+        .map((l) => l.map((p) => p.t).join(''));
+      for (const l of wrapped) lines.push({ t: fit(L.m, l, tw), font, color });
+    };
+    add(card.domain, `400 14px ${FONT}`, th.muted, 1);
+    add(card.title, `400 15px ${FONT}`, th.text, 2);
+    add(card.description, `400 14px ${FONT}`, th.muted, 2);
+    const textTop = y + (H - lines.length * 20) / 2;
+    L.ops.push((ctx) => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, H, R);
+      ctx.clip();
+      if (bmp) {
+        const s = Math.max(H / bmp.width, H / bmp.height); // cover-crop the square thumbnail
+        const sw = H / s, sh = H / s;
+        ctx.drawImage(bmp, (bmp.width - sw) / 2, (bmp.height - sh) / 2, sw, sh, x, y, H, H);
+        ctx.fillStyle = th.border;
+        ctx.fillRect(x + H, y, 1, H);
+      }
+      ctx.restore();
+      ctx.strokeStyle = th.border;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(x + 0.5, y + 0.5, w - 1, H - 1, R);
+      ctx.stroke();
+      ctx.textBaseline = 'middle';
+      lines.forEach((l, i) => {
+        ctx.font = l.font;
+        ctx.fillStyle = l.color;
+        ctx.fillText(l.t, tx, textTop + i * 20 + 10);
+      });
+    });
+    return y + H;
+  }
+
+  function drawLinkIcon(ctx, x, cy, color) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.6;
+    ctx.lineCap = 'round';
+    ctx.translate(x, cy - 7);
+    ctx.scale(14 / 24, 14 / 24);
+    ctx.stroke(new Path2D('M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'));
+    ctx.stroke(new Path2D('M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'));
+    ctx.restore();
+  }
+
+  // Date and tweet link, in one of several layouts.
+  function footerBlock(L, model, footer, x, y, w) {
+    const th = L.th;
+    const date = formatDate(model.createdAt);
+    const link = footer !== 'date' && model.url ? model.url : '';
+    const font = `400 15px ${FONT}`;
+    const small = `400 14px ${FONT}`;
+    if (!date && !link) return y;
+
+    if (footer === 'inline' && link) {
+      L.m.font = font;
+      const dw = date ? L.m.measureText(date).width : 0;
+      L.m.font = small;
+      const lt = fit(L.m, link, w - dw - 16);
+      const top = y + 16;
+      L.ops.push((ctx) => {
+        ctx.textBaseline = 'middle';
+        ctx.font = small; ctx.fillStyle = th.link; ctx.fillText(lt, x, top + 10);
+        if (date) { ctx.font = font; ctx.fillStyle = th.muted; ctx.textAlign = 'right'; ctx.fillText(date, x + w, top + 10); ctx.textAlign = 'left'; }
+      });
+      return top + 20;
+    }
+
+    if (footer === 'bar' && link) {
+      const top = y + 18;
+      L.m.font = small;
+      const dw = date ? L.m.measureText(date).width : 0;
+      const lt = fit(L.m, link, w - dw - 40);
+      L.ops.push((ctx) => {
+        ctx.fillStyle = th.fill;
+        ctx.beginPath();
+        ctx.roundRect(x, top, w, 36, 10);
+        ctx.fill();
+        drawLinkIcon(ctx, x + 12, top + 18, th.link);
+        ctx.textBaseline = 'middle';
+        ctx.font = small;
+        ctx.fillStyle = th.link;
+        ctx.fillText(lt, x + 32, top + 18);
+        if (date) { ctx.fillStyle = th.muted; ctx.textAlign = 'right'; ctx.fillText(date, x + w - 12, top + 18); ctx.textAlign = 'left'; }
+      });
+      return top + 36;
+    }
+
+    // 'date' and 'stacked'
+    let top = y + 16;
+    if (date) {
+      const dy = top;
+      L.ops.push((ctx) => {
+        ctx.textBaseline = 'middle'; ctx.font = font; ctx.fillStyle = th.muted; ctx.fillText(date, x, dy + 10);
+      });
+      top += 20;
+    }
+    if (link) {
+      L.m.font = small;
+      const lt = fit(L.m, link, w);
+      const ly = top + (date ? 4 : 0);
+      L.ops.push((ctx) => {
+        ctx.textBaseline = 'middle'; ctx.font = small; ctx.fillStyle = th.link; ctx.fillText(lt, x, ly + 10);
+      });
+      top = ly + 20;
+    }
+    return top;
+  }
+
+  async function render(model, { theme = 'light', loadImage, footer = 'inline', cardLink = 'above' }) {
     const th = THEMES[theme] || THEMES.light;
 
     // Load every image first so the layout knows real aspect ratios.
@@ -300,6 +465,7 @@
       if (!t) return;
       if (t.user && t.user.avatar) urls.add(avatarUrl(t.user.avatar));
       for (const m of t.media || []) if (m.url) urls.add(m.url);
+      if (t.card && t.card.image && t.card.image.url) urls.add(t.card.image.url);
       collect(t.quote);
     };
     collect(model);
@@ -308,13 +474,27 @@
       try { const b = await loadImage(u); if (b) imgs.set(u, b); } catch (_) {}
     }));
 
-    const L = { m: new OffscreenCanvas(1, 1).getContext('2d'), ops: [], th, imgs };
+    const L = { m: new OffscreenCanvas(1, 1).getContext('2d'), ops: [], th, imgs, cardLink };
     const innerW = W - PAD * 2;
     let y = PAD;
 
+    let text = model.text || '';
+    const card = model.card && !(model.media && model.media.length) ? model.card : null;
+    let cardUrlAbove = !!(card && card.url && cardLink === 'above');
+    if (card && card.url) {
+      const t = text.trimEnd();
+      if (t.endsWith(card.url)) text = t.slice(0, -card.url.length).trimEnd();
+      else if (text.includes(card.url)) cardUrlAbove = false;
+    }
+    L.cardUrlShown = cardUrlAbove || !!(card && card.url && text.includes(card.url));
+
     y = userLine(L, model.user || {}, PAD, y, 48, 17, false, innerW);
-    if (model.text) y = textBlock(L, model.text, model.links, PAD, y + 12, innerW, 18, 26, th.text);
+    if (text) y = textBlock(L, text, model.links, PAD, y + 12, innerW, 18, 26, th.text);
     if (model.media && model.media.length) y = mediaBlock(L, model.media, PAD, y + 14, innerW, innerW * 1.2, 16);
+    if (card) {
+      if (cardUrlAbove) y = textBlock(L, card.url, [card.url], PAD, y + (text ? 6 : 12), innerW, 18, 26, th.text);
+      y = linkCardBlock(L, card, PAD, y + 14, innerW);
+    }
 
     const q = model.quote;
     if (q) {
@@ -333,17 +513,7 @@
       y = bottom;
     }
 
-    const date = formatDate(model.createdAt);
-    if (date) {
-      const dy = y + 16;
-      L.ops.push((ctx) => {
-        ctx.textBaseline = 'middle';
-        ctx.font = `400 15px ${FONT}`;
-        ctx.fillStyle = th.muted;
-        ctx.fillText(date, PAD, dy + 10);
-      });
-      y = dy + 20;
-    }
+    y = footerBlock(L, model, footer, PAD, y, innerW);
 
     const c = model.counts || {};
     if ([c.replies, c.reposts, c.likes, c.views].some((n) => n > 0)) {
@@ -366,5 +536,32 @@
     return canvas.convertToBlob({ type: 'image/png' });
   }
 
-  globalThis.TwsCard = { render, cleanText, avatarUrl };
+  // X link-preview card -> { url, large, title, domain, description, image }.
+  // `raw` is { name, url, binding_values } where binding_values is either an
+  // array of { key, value } (web API) or an object (embed API).
+  function cardOf(raw, urls) {
+    if (!raw || !raw.binding_values || /poll|unified|audiospace|broadcast/.test(raw.name || '')) return null;
+    const bv = Array.isArray(raw.binding_values)
+      ? Object.fromEntries(raw.binding_values.map((b) => [b.key, b.value]))
+      : raw.binding_values;
+    const str = (k) => (bv[k] && bv[k].string_value) || '';
+    const img = ['photo_image_full_size_original', 'summary_photo_image_original', 'player_image_original',
+      'thumbnail_image_original', 'photo_image_full_size', 'summary_photo_image', 'thumbnail_image']
+      .map((k) => bv[k] && bv[k].image_value).find(Boolean);
+    const title = str('title');
+    if (!title && !img) return null;
+    const short = raw.url || str('card_url');
+    const hit = (urls || []).find((u) => u && u.url === short);
+    const full = (hit && hit.expanded_url) || (/^https?:\/\/t\.co\//.test(short) ? '' : short);
+    return {
+      url: full,
+      large: /large|player/.test(raw.name || '') || !!bv.photo_image_full_size_original,
+      title,
+      domain: str('domain') || str('vanity_url'),
+      description: str('description'),
+      image: img ? { url: img.url, w: img.width, h: img.height } : null,
+    };
+  }
+
+  globalThis.TwsCard = { render, cleanText, avatarUrl, cardOf };
 })();

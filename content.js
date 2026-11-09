@@ -14,7 +14,7 @@
     for (const [k, v] of Object.entries(e.data.models || {})) models.set(k, v);
   });
 
-  const SHARE_LABEL = 'Copy tweet as image (Shift-click: image + link)';
+  const SHARE_LABEL = 'Copy tweet as image';
 
   // ---------- helpers ----------
   const svg = (inner) =>
@@ -187,7 +187,7 @@
     const action = btn.dataset.twsAction;
     if (action === 'copy') copyImage(btn);
     else if (action === 'download') downloadVideo(btn);
-    else if (action === 'share') shareTweet(btn, e.shiftKey);
+    else if (action === 'share') shareTweet(btn);
   }, true);
 
   // ---------- 1. copy image ----------
@@ -292,6 +292,7 @@
       links: body.links,
       media,
       quote,
+      card: TwsCard.cardOf(d.card, entities.urls),
       counts: { replies: d.conversation_count, likes: d.favorite_count },
     };
   }
@@ -312,6 +313,21 @@
     };
     walk(el);
     return out.trim();
+  }
+
+  function domCard(article) {
+    const w = article.querySelector('[data-testid="card.wrapper"]');
+    if (!w) return null;
+    const img = w.querySelector('img');
+    const from = (w.parentElement || w).innerText.match(/From ([^\s]+)/);
+    return {
+      url: '',
+      large: !!w.querySelector('[data-testid="card.layoutLarge.media"]'),
+      title: w.querySelector('a[aria-label]')?.getAttribute('aria-label') || '',
+      domain: from ? from[1] : '',
+      description: '',
+      image: img ? { url: img.src } : null,
+    };
   }
 
   // Last resort: read what's on the page (text may be cut at "Show more").
@@ -335,19 +351,31 @@
       links: [],
       media,
       quote: null,
+      card: domCard(article),
       counts: {},
     };
   }
 
+  function finish(t) {
+    const fix = (x) => {
+      if (!x) return x;
+      const out = { ...x, quote: fix(x.quote) };
+      if (x.cardRaw !== undefined) out.card = TwsCard.cardOf(x.cardRaw, x.cardUrls);
+      out.url = `https://x.com/${(x.user && x.user.handle) || 'i'}/status/${x.id}`;
+      return out;
+    };
+    return fix(t);
+  }
+
   async function tweetModel(article) {
     const info = tweetInfo(article);
-    if (models.has(info.id)) return models.get(info.id);
+    if (models.has(info.id)) return finish(models.get(info.id));
     try {
       const { data } = await bg({ type: 'syndication', tweetId: info.id });
       const t = fromSyndication(data);
-      if (t) return t;
+      if (t) return finish(t);
     } catch (_) {}
-    return fromDom(article, info);
+    return finish(fromDom(article, info));
   }
 
   function largeUrl(url) {
@@ -382,46 +410,17 @@
     return TwsCard.render(model, { theme: pageTheme(), loadImage });
   }
 
-  function blobToDataUrl(blob) {
-    return new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result);
-      r.onerror = () => reject(r.error);
-      r.readAsDataURL(blob);
-    });
-  }
-
-  const escapeHtml = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-
-  // Image + link in one clipboard entry: apps that accept HTML get both,
-  // image-only apps take the PNG, text-only apps take the URL.
-  function imageLinkItem(pngPromise, link) {
-    const html = pngPromise.then(async (png) => {
-      const src = await blobToDataUrl(png);
-      const a = escapeHtml(link);
-      return new Blob([`<img src="${src}" alt="Tweet"><br><a href="${a}">${a}</a>`], { type: 'text/html' });
-    });
-    return new ClipboardItem({
-      'image/png': pngPromise,
-      'text/html': html,
-      'text/plain': new Blob([link], { type: 'text/plain' }),
-    });
-  }
-
   let rendering = false;
-  async function shareTweet(btn, withLink) {
+  async function shareTweet(btn) {
     const article = btn.closest('article');
     if (!article || rendering) return;
-    const { user, id } = tweetInfo(article);
-    const link = `${location.origin}/${user}/status/${id}`;
 
     rendering = true;
     setState(btn, 'busy');
     try {
       // Pass the pending render as a promise so the write keeps the click's user activation.
       const png = renderTweet(article);
-      const item = withLink ? imageLinkItem(png, link) : new ClipboardItem({ 'image/png': png });
-      await navigator.clipboard.write([item]);
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
       done(btn);
     } catch (err) {
       done(btn, err);
