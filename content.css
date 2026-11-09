@@ -24,6 +24,8 @@
 .tws-btn.tws-busy {
   opacity: 1;
 }
+/* Photo viewer: X's "Hide/Show post" button owns the top-right corner. */
+[data-testid="swipe-to-dismiss"] > .tws-btn { top: 13px; right: 60px; }
 .tws-btn:hover { background: rgba(29, 155, 240, 0.95); }
 .tws-btn.tws-ok { background: #00ba7c; opacity: 1; }
 .tws-btn.tws-err { background: #f4212e; opacity: 1; }
