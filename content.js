@@ -123,15 +123,30 @@
     // Tweets
     document.querySelectorAll('article[data-testid="tweet"]').forEach((article) => {
       if (article.querySelector('.tws-share')) return;
-      // Top-right of the tweet, just left of the "···" menu.
-      const caret = article.querySelector('[data-testid="caret"]');
-      if (caret && caret.parentElement) {
-        caret.parentElement.insertBefore(makeBtn('share', SHARE_LABEL, 'tws-share-inline'), caret);
+      // First icon of the tweet's top-right stack (before Grok and "···").
+      const stack = headerStack(article);
+      if (stack) {
+        stack.prepend(makeBtn('share', SHARE_LABEL, 'tws-share-inline'));
       } else {
         article.classList.add('tws-host');
         article.appendChild(makeBtn('share', SHARE_LABEL));
       }
     });
+  }
+
+  // The row holding the "···" menu and its sibling icons (e.g. Grok): climb from
+  // the menu button until an ancestor also contains another button.
+  function headerStack(article) {
+    const caret = article.querySelector('[data-testid="caret"]');
+    if (!caret) return null;
+    for (let node = caret.parentElement; node && node !== article; node = node.parentElement) {
+      // The icon stack is narrow; anything wider is the rest of the header.
+      if (node.querySelector('[data-testid="User-Name"]') || node.getBoundingClientRect().width > 200) break;
+      const other = [...node.querySelectorAll('button, [role="button"]')]
+        .some((b) => b !== caret && !b.classList.contains('tws-btn'));
+      if (other) return node;
+    }
+    return caret.parentElement;
   }
 
   let scheduled = false;
