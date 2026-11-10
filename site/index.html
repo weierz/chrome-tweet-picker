@@ -132,14 +132,24 @@
     <div class="text">
       <p class="kicker">Links you can read</p>
       <h2>Full URLs, not <span style="color:var(--accent)">site.com/pa…</span></h2>
-      <p>X shortens every link in a post. In the image, TweetPicker writes each link out in full, so whoever sees it knows exactly where it goes and can type it in.</p>
+      <p>X shortens long links to something like <span style="color:var(--accent)">site.com/pa…</span>, which is useless once the post becomes a picture. TweetPicker writes every link out in full, so whoever sees the image knows exactly where it goes.</p>
+      <p>Link previews get their full address too, written just above the preview.</p>
     </div>
     <div class="demo">
-      <div class="compare">
-        <div class="row"><div class="lbl">On X</div><div class="u">harborlight.co/journal/2026/nor…</div></div>
-        <div class="row good"><div class="lbl">In TweetPicker's image</div><div class="u">https://harborlight.co/journal/2026/north-quay-houses-before-the-renovation</div></div>
-        <div class="row"><div class="lbl">Link preview on X</div><div class="u">From harborlight.co</div></div>
-        <div class="row good"><div class="lbl">Link preview in the image</div><div class="u">https://harborlight.co/journal/2026/north-quay-houses-before-the-renovation <span style="color:var(--muted)">(shown above the preview)</span></div></div>
+      <div class="urlcmp">
+        <div class="ulabel">On X</div>
+        <div class="x mini">
+          <div class="mh"><canvas data-av="#1d9bf0:H"></canvas><b>Harbor Light Co.</b></div>
+          <p>New on the journal: <span class="lnk cut">harborlight.co/journal/2026/nor…</span></p>
+        </div>
+        <div class="note-bad">✕ Cut off. Where does it go?</div>
+        <div class="arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v15M6 13l6 6 6-6"/></svg></div>
+        <div class="ulabel blue">In the image TweetPicker makes</div>
+        <div class="x mini">
+          <div class="mh"><canvas data-av="#1d9bf0:H"></canvas><b>Harbor Light Co.</b></div>
+          <p>New on the journal: <span class="lnk mark">https://harborlight.co/journal/2026/north-quay-houses-before-the-renovation</span></p>
+        </div>
+        <div class="note-good">✓ The whole address, readable and typeable</div>
       </div>
     </div>
   </section>
