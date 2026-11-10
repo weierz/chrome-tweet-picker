@@ -19,6 +19,9 @@ header.top img{width:32px;height:32px}
 header.top nav{margin-left:auto;font-size:15px;white-space:nowrap}
 header.top nav a{color:var(--muted);text-decoration:none;margin-left:18px}
 header.top nav a:hover{color:var(--fg)}
+header.top nav{display:flex;align-items:center}
+header.top nav a.gh{display:flex}
+header.top nav a.gh svg{width:20px;height:20px}
 
 /* hero */
 .hero{text-align:center;padding:40px 0 8px}
