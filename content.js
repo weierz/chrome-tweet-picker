@@ -21,12 +21,40 @@
   const tweetMap = new Map(); // tweet id -> [{ mediaId, url }]
   const models = new Map();   // tweet id -> full tweet data (see card.js)
 
+  // A timeline's copy of an article post carries only its preview; don't let
+  // it replace a full copy seen earlier.
+  const hasBody = (t) => !!(t && t.article && t.article.blocks);
   window.addEventListener('message', (e) => {
-    if (retired || e.source !== window || !e.data || e.data.__tws !== 'media') return;
+    if (retired || e.source !== window || !e.data) return;
+    if (e.data.__tws === 'articleDone') {
+      const waits = articleWaits.get(e.data.id) || [];
+      articleWaits.delete(e.data.id);
+      for (const w of waits) w(e.data.ok);
+      return;
+    }
+    if (e.data.__tws !== 'media') return;
     for (const [k, v] of Object.entries(e.data.media || {})) mediaMap.set(k, v);
     for (const [k, v] of Object.entries(e.data.tweets || {})) tweetMap.set(k, v);
-    for (const [k, v] of Object.entries(e.data.models || {})) models.set(k, v);
+    for (const [k, v] of Object.entries(e.data.models || {})) {
+      const old = models.get(k);
+      if (hasBody(old) && v.article && !hasBody(v)) models.set(k, { ...v, article: old.article });
+      // The on-demand article fetch lacks some fields (views); only take its body.
+      else if (old && hasBody(v) && !hasBody(old)) models.set(k, { ...old, article: v.article });
+      else models.set(k, v);
+    }
   });
+
+  // Ask inject.js (page world) to load an article's full body from X's API.
+  const articleWaits = new Map(); // tweet id -> [resolve]
+  function fullArticle(id) {
+    return new Promise((resolve) => {
+      const waits = articleWaits.get(id) || [];
+      waits.push(resolve);
+      articleWaits.set(id, waits);
+      if (waits.length === 1) window.postMessage({ __tws: 'getArticle', id }, location.origin);
+      setTimeout(() => resolve(false), 10000);
+    });
+  }
 
   const SHARE_LABEL = 'Copy tweet as image';
 
@@ -388,6 +416,16 @@
       media,
       quote,
       card: TwsCard.cardOf(d.card, entities.urls),
+      article: d.article && d.article.title ? {
+        id: d.article.rest_id,
+        title: d.article.title,
+        preview: d.article.preview_text || '',
+        cover: (() => {
+          const i = d.article.cover_media && d.article.cover_media.media_info;
+          return i && i.original_img_url ? { url: i.original_img_url, w: i.original_img_width, h: i.original_img_height } : null;
+        })(),
+        blocks: null,
+      } : null,
       counts: { replies: d.conversation_count, likes: d.favorite_count },
     };
   }
@@ -473,11 +511,16 @@
 
   async function tweetModel(article) {
     const info = tweetInfo(article);
-    if (models.has(info.id)) return finish(models.get(info.id));
-    try {
-      return finish(await syndicated(info.id));
-    } catch (_) {}
-    return finish(fromDom(article, info));
+    let t = models.get(info.id);
+    if (!t) {
+      try { t = await syndicated(info.id); } catch (_) {}
+    }
+    // An article post: fetch its full body if only the preview is known.
+    if (t && t.article && !hasBody(t)) {
+      await fullArticle(info.id);
+      if (hasBody(models.get(info.id))) t = models.get(info.id);
+    }
+    return finish(t || fromDom(article, info));
   }
 
   function largeUrl(url) {

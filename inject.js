@@ -1,9 +1,8 @@
 // Runs in the page's own JS world. Watches X's API responses for video
 // metadata and forwards the best MP4 URLs to the content script.
+// After an extension update a newer copy runs in the same page: it takes over
+// scanning (window.__twsScan) while the network hooks stay installed once.
 (() => {
-  if (window.__twsInjected) return;
-  window.__twsInjected = true;
-
   const API_RE = /\/(graphql|i\/api)\//;
 
   function bestMp4(variants) {
@@ -57,6 +56,55 @@
     return { text: t, links };
   }
 
+  // X Article (long-form post). The full body (content_state) only comes with
+  // the tweet's detail request; timelines carry just the title and preview.
+  function articleOf(o) {
+    const a = o.article && o.article.article_results && o.article.article_results.result;
+    if (!a || !a.title) return null;
+    const img = (m) => {
+      const i = m && m.media_info;
+      return i && i.original_img_url ? { url: i.original_img_url, w: i.original_img_width, h: i.original_img_height } : null;
+    };
+    const mediaById = {};
+    for (const m of a.media_entities || []) {
+      const i = img(m);
+      if (i) mediaById[m.media_id] = i;
+    }
+    let blocks = null;
+    const cs = a.content_state;
+    if (cs && Array.isArray(cs.blocks)) {
+      const ents = {};
+      const list = Array.isArray(cs.entityMap) ? cs.entityMap
+        : Object.entries(cs.entityMap || {}).map(([key, value]) => ({ key, value }));
+      for (const e of list) if (e && e.value) ents[e.key] = e.value;
+      blocks = cs.blocks.map((b) => {
+        const out = {
+          type: b.type,
+          text: b.text || '',
+          depth: b.depth || 0,
+          styles: (b.inlineStyleRanges || []).map((r) => ({ o: r.offset, l: r.length, s: r.style })),
+          links: [],
+        };
+        for (const r of b.entityRanges || []) {
+          const e = ents[r.key];
+          const d = (e && e.data) || {};
+          if (!e) continue;
+          if (e.type === 'LINK') out.links.push({ o: r.offset, l: r.length });
+          else if (b.type === 'atomic') {
+            out.entity = e.type;
+            if (e.type === 'MEDIA') {
+              out.media = (d.mediaItems || []).map((i) => mediaById[i.mediaId]).filter(Boolean);
+              out.caption = d.caption || '';
+            } else if (e.type === 'MARKDOWN') out.code = d.markdown || '';
+            else if (e.type === 'TWEET') out.tweetId = d.tweetId || '';
+          }
+        }
+        return out;
+      });
+    }
+    return { id: a.rest_id, title: a.title, preview: a.preview_text || '', cover: img(a.cover_media), blocks };
+  }
+
   function tweetOf(o, depth) {
     if (o && o.__typename === 'TweetWithVisibilityResults') o = o.tweet;
     if (!o || !o.rest_id || !o.legacy || typeof o.legacy.full_text !== 'string') return null;
@@ -88,6 +136,7 @@
         h: m.original_info && m.original_info.height,
       })),
       quote,
+      article: articleOf(o),
       // Link preview; parsed by card.js in the content script.
       cardRaw: card ? { name: card.name, url: card.url, binding_values: card.binding_values } : null,
       cardUrls: (urls || []).concat((l.entities && l.entities.urls) || [])
@@ -142,12 +191,92 @@
     if (found) window.postMessage({ __tws: 'media', media, tweets, models }, location.origin);
   }
 
+  // ---- full article on demand ----
+  // Timelines only carry an article's preview, so ask X's API for the post
+  // the same way the page does (same session, same endpoint) and scan it.
+  const state = window.__twsState || (window.__twsState = { ops: {}, features: null, auth: null, fetch: null });
+  // X's public web-app token, used only if the page's own one wasn't seen.
+  const BEARER = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA';
+
+  function noteRequest(url) {
+    try {
+      const u = new URL(url, location.href);
+      const m = /\/graphql\/([\w-]+)\/(\w+)$/.exec(u.pathname);
+      if (!m) return;
+      state.ops[m[2]] = m[1];
+      // Reuse the feature flags of a request that loads tweets (others lack
+      // the article ones), preferring the very query used below.
+      const f = u.searchParams.get('features');
+      if (f && f.includes('article_tweet_consumption') && (m[2] === 'TweetResultByRestId' || !state.exactFeatures)) {
+        state.features = f;
+        state.exactFeatures = m[2] === 'TweetResultByRestId';
+      }
+    } catch (_) {}
+  }
+
+  async function queryId(op) {
+    if (state.ops[op]) return state.ops[op];
+    const src = [...document.scripts].map((s) => s.src).find((s) => /\/main\.\w+\.js$/.test(s));
+    if (!src) return null;
+    const js = await (await fetch(src)).text();
+    const m = new RegExp(`queryId:"([\\w-]+)",operationName:"${op}"`).exec(js);
+    if (m) state.ops[op] = m[1];
+    return m && m[1];
+  }
+
+  async function fetchArticle(tweetId) {
+    const qid = await queryId('TweetResultByRestId');
+    const ct0 = (/(?:^|;\s*)ct0=([^;]+)/.exec(document.cookie) || [])[1];
+    if (!qid || !state.features || !ct0) throw new Error('X API not available');
+    const params = new URLSearchParams({
+      variables: JSON.stringify({ tweetId, withCommunity: false, includePromotedContent: false, withVoice: false }),
+      features: JSON.stringify({
+        ...JSON.parse(state.features),
+        responsive_web_twitter_article_tweet_consumption_enabled: true,
+        articles_preview_enabled: true,
+      }),
+      fieldToggles: JSON.stringify({ withArticleRichContentState: true, withArticlePlainText: false }),
+    });
+    const res = await (state.fetch || window.fetch).call(window, `/i/api/graphql/${qid}/TweetResultByRestId?${params}`, {
+      credentials: 'include',
+      headers: {
+        authorization: state.auth || BEARER,
+        'x-csrf-token': decodeURIComponent(ct0),
+        'x-twitter-active-user': 'yes',
+        'x-twitter-auth-type': 'OAuth2Session',
+        'content-type': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    window.__twsScan(await res.json());
+  }
+
+  window.__twsScan = scan;
+  window.__twsArticle = fetchArticle;
+  if (window.__twsHooks) return;
+  window.__twsHooks = true;
+  window.__twsInjected = true;
+
+  window.addEventListener('message', (e) => {
+    if (e.source !== window || !e.data || e.data.__tws !== 'getArticle') return;
+    const id = String(e.data.id);
+    const reply = (ok) => window.postMessage({ __tws: 'articleDone', id, ok }, location.origin);
+    window.__twsArticle(id).then(() => reply(true), () => reply(false));
+  });
+
   // XHR
   const origOpen = XMLHttpRequest.prototype.open;
   const origSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.open = function (method, url) {
-    try { this.__twsUrl = String(url); } catch (_) {}
+    try { this.__twsUrl = String(url); noteRequest(this.__twsUrl); } catch (_) {}
     return origOpen.apply(this, arguments);
+  };
+  const origSetHeader = XMLHttpRequest.prototype.setRequestHeader;
+  XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
+    try {
+      if (/^authorization$/i.test(name) && /^Bearer /.test(value) && API_RE.test(this.__twsUrl || '')) state.auth = value;
+    } catch (_) {}
+    return origSetHeader.apply(this, arguments);
   };
   XMLHttpRequest.prototype.send = function () {
     if (this.__twsUrl && API_RE.test(this.__twsUrl)) {
@@ -156,7 +285,7 @@
           let data = null;
           if (this.responseType === '' || this.responseType === 'text') data = JSON.parse(this.responseText);
           else if (this.responseType === 'json') data = this.response;
-          if (data) scan(data);
+          if (data) window.__twsScan(data);
         } catch (_) {}
       });
     }
@@ -165,12 +294,17 @@
 
   // fetch
   const origFetch = window.fetch;
-  window.fetch = function (input) {
+  state.fetch = origFetch;
+  window.fetch = function (input, init) {
     const p = origFetch.apply(this, arguments);
     try {
       const url = typeof input === 'string' ? input : input && input.url;
       if (url && API_RE.test(url)) {
-        p.then((r) => r.clone().json().then(scan)).catch(() => {});
+        noteRequest(url);
+        const h = init && init.headers;
+        const auth = h && (typeof h.get === 'function' ? h.get('authorization') : h.authorization || h.Authorization);
+        if (auth && /^Bearer /.test(auth)) state.auth = auth;
+        p.then((r) => r.clone().json().then((d) => window.__twsScan(d))).catch(() => {});
       }
     } catch (_) {}
     return p;

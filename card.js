@@ -6,6 +6,7 @@
 //   media: [{ type: 'photo'|'video'|'animated_gif', url, w, h }],
 //   quote: model | null, counts: { replies, reposts, likes, views },
 //   card: { url, large, title, domain, description, image: { url, w, h } } | null,   // link preview
+//   article: { title, preview, cover: { url, w, h }, blocks: [...] | null } | null,  // X Article
 //   url,                                                                        // tweet permalink
 // }
 // opts.cardLink: 'above' | 'below' — where the link preview's full URL goes.
@@ -14,6 +15,7 @@
 
   const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", ' +
     '"Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+  const MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
   const THEMES = {
     light: { bg: '#ffffff', text: '#0f1419', muted: '#536471', border: '#cfd9de', link: '#1d9bf0', fill: '#eff3f4' },
     dim: { bg: '#15202b', text: '#f7f9f9', muted: '#8b98a5', border: '#38444d', link: '#1d9bf0', fill: '#1e2732' },
@@ -68,14 +70,16 @@
   const NO_LINE_START = /^[，。、；：！？）」』》〉】,.!?;:)\]}%]$/;
 
   // Word-wrap via Intl.Segmenter. Returns lines of positioned pieces.
-  function wrap(ctx, text, maxW, ranges) {
+  // fontAt(i) gives the font at text index i (bold / italic runs); `cuts` are
+  // the indexes where it changes.
+  function wrap(ctx, text, maxW, ranges, fontAt, cuts) {
     const isLink = (i) => ranges.some(([a, b]) => i >= a && i < b);
     const lines = [];
     let offset = 0;
     for (const para of text.split('\n')) {
       let line = [];
       let x = 0;
-      const push = (t, idx) => {
+      const push = (t, idx, font) => {
         const w = ctx.measureText(t).width;
         const blank = !t.trim();
         if (x + w > maxW && line.length && !NO_LINE_START.test(t)) {
@@ -84,14 +88,23 @@
           x = 0;
           if (blank) return; // no leading space on wrapped lines
         }
-        line.push({ t, x, link: isLink(offset + idx) });
+        line.push({ t, x, link: isLink(offset + idx), font });
         x += w;
       };
-      for (const s of wordSeg.segment(para)) {
-        if (CJK.test(s.segment) || ctx.measureText(s.segment).width > maxW) {
-          for (const g of graphemeSeg.segment(s.segment)) push(g.segment, s.index + g.index);
-        } else {
-          push(s.segment, s.index);
+      const runs = [0, para.length];
+      for (const c of cuts || []) if (c > offset && c < offset + para.length) runs.push(c - offset);
+      runs.sort((a, b) => a - b);
+      for (let k = 0; k < runs.length - 1; k++) {
+        const r0 = runs[k], r1 = runs[k + 1];
+        if (r0 === r1) continue;
+        const font = fontAt ? fontAt(offset + r0) : undefined;
+        if (font) ctx.font = font;
+        for (const s of wordSeg.segment(para.slice(r0, r1))) {
+          if (CJK.test(s.segment) || ctx.measureText(s.segment).width > maxW) {
+            for (const g of graphemeSeg.segment(s.segment)) push(g.segment, r0 + s.index + g.index, font);
+          } else {
+            push(s.segment, r0 + s.index, font);
+          }
         }
       }
       lines.push(line);
@@ -185,15 +198,36 @@
   // Every block measures with `m` and pushes draw closures to `ops`; returns the new y.
 
   function textBlock(L, text, links, x, y, maxW, size, lineH, color) {
-    const font = `400 ${size}px ${FONT}`;
-    L.m.font = font;
-    const lines = wrap(L.m, text, maxW, linkRanges(text, links));
+    return richBlock(L, text, { links, x, y, w: maxW, size, lineH, color });
+  }
+
+  // Wrapped text with optional bold / italic runs (o.styles: [{ o, l, s }]),
+  // extra link ranges (o.ranges: [[start, end]]) and weight / monospace.
+  function richBlock(L, text, o) {
+    const styles = o.styles || [];
+    const face = o.mono ? MONO : FONT;
+    const fontOf = (bold, italic) => `${italic ? 'italic ' : ''}${bold ? 700 : (o.weight || 400)} ${o.size}px ${face}`;
+    const fontAt = (i) => {
+      let bold = false, italic = false;
+      for (const s of styles) {
+        if (i < s.o || i >= s.o + s.l) continue;
+        if (/bold/i.test(s.s)) bold = true;
+        if (/italic/i.test(s.s)) italic = true;
+      }
+      return fontOf(bold, italic);
+    };
+    const cuts = styles.flatMap((s) => [s.o, s.o + s.l]);
+    const ranges = (o.ranges || []).concat(o.mono ? [] : linkRanges(text, o.links));
+    L.m.font = fontOf(false, false);
+    const lines = wrap(L.m, text, o.w, ranges, styles.length ? fontAt : null, cuts);
+    const { x, y, lineH, color } = o;
+    const base = fontOf(false, false);
     L.ops.push((ctx) => {
-      ctx.font = font;
       ctx.textBaseline = 'middle';
       lines.forEach((line, i) => {
         const by = y + i * lineH + lineH / 2;
         for (const p of line) {
+          ctx.font = p.font || base;
           ctx.fillStyle = p.link ? L.th.link : color;
           ctx.fillText(p.t, x + p.x, by);
         }
@@ -409,6 +443,93 @@
     return y + H;
   }
 
+  // ---------- X Articles ----------
+  const ARTICLE_URL = /https?:\/\/(?:x|twitter)\.com\/i\/article\/\d+\S*/g;
+
+  // The whole article: cover, title, then every block of the body
+  // (or the preview, if the body couldn't be loaded).
+  function articleBlock(L, a, x, y, w) {
+    const th = L.th;
+    if (a.cover) y = mediaBlock(L, [{ type: 'photo', ...a.cover }], x, y, w, w * 1.2, 16) + 18;
+    y = richBlock(L, a.title, { x, y, w, size: 26, lineH: 32, weight: 800, color: th.text, links: [] });
+
+    const blocks = a.blocks || (a.preview ? [{ type: 'unstyled', text: a.preview.trimEnd() + '…' }] : []);
+    const BODY = { size: 17, lineH: 26, color: th.text };
+    let num = 0, prev = '';
+    for (const b of blocks) {
+      const ranges = (b.links || []).map((l) => [l.o, l.o + l.l]);
+      const isList = /list-item$/.test(b.type);
+      if (b.type !== 'ordered-list-item') num = 0;
+      if (b.type === 'atomic') {
+        y = atomicBlock(L, b, x, y, w);
+      } else if (!b.text.trim()) {
+        y += 6;
+      } else if (/^header-/.test(b.type)) {
+        const size = b.type === 'header-one' ? 24 : b.type === 'header-two' ? 21 : 18;
+        y = richBlock(L, b.text, { x, y: y + 22, w, size, lineH: Math.round(size * 1.3), weight: 700,
+          color: th.text, styles: b.styles, ranges });
+      } else if (isList) {
+        const indent = 26 + (b.depth || 0) * 22;
+        const top = y + (/list-item$/.test(prev) ? 6 : 14);
+        const marker = b.type === 'ordered-list-item' ? `${++num}.` : '•';
+        L.ops.push((ctx) => {
+          ctx.font = `400 ${BODY.size}px ${FONT}`;
+          ctx.fillStyle = th.text;
+          ctx.textBaseline = 'middle';
+          ctx.textAlign = 'right';
+          ctx.fillText(marker, x + indent - 8, top + BODY.lineH / 2);
+          ctx.textAlign = 'left';
+        });
+        y = richBlock(L, b.text, { ...BODY, x: x + indent, y: top, w: w - indent, styles: b.styles, ranges });
+      } else if (b.type === 'blockquote') {
+        const top = y + 14;
+        y = richBlock(L, b.text, { ...BODY, x: x + 16, y: top, w: w - 16, styles: b.styles, ranges });
+        const bottom = y;
+        L.ops.push((ctx) => { ctx.fillStyle = th.border; ctx.fillRect(x, top, 3, bottom - top); });
+      } else if (b.type === 'code-block') {
+        y = codeBlock(L, b.text, x, y + 14, w);
+      } else {
+        y = richBlock(L, b.text, { ...BODY, x, y: y + 14, w, styles: b.styles, ranges });
+      }
+      prev = b.type;
+    }
+    return y;
+  }
+
+  function atomicBlock(L, b, x, y, w) {
+    const th = L.th;
+    if (b.entity === 'MEDIA' && b.media && b.media.length) {
+      y = mediaBlock(L, b.media.map((m) => ({ type: 'photo', ...m })), x, y + 18, w, w * 1.2, 12);
+      if (b.caption) y = richBlock(L, b.caption, { x, y: y + 6, w, size: 14, lineH: 20, color: th.muted, links: [] });
+      return y + 4;
+    }
+    if (b.entity === 'DIVIDER') {
+      const ly = y + 18;
+      L.ops.push((ctx) => { ctx.fillStyle = th.border; ctx.fillRect(x, ly, w, 1); });
+      return ly + 4;
+    }
+    if (b.entity === 'MARKDOWN' && b.code) return codeBlock(L, b.code.replace(/^```\w*\n?|\n?```\s*$/g, ''), x, y + 14, w);
+    if (b.entity === 'TWEET' && b.tweetId) {
+      const url = `https://x.com/i/status/${b.tweetId}`;
+      return richBlock(L, url, { x, y: y + 14, w, size: 17, lineH: 26, color: th.text, links: [url] });
+    }
+    return y;
+  }
+
+  function codeBlock(L, code, x, top, w) {
+    const th = L.th;
+    let h = 0;
+    L.ops.push((ctx) => {
+      ctx.fillStyle = th.fill;
+      ctx.beginPath();
+      ctx.roundRect(x, top, w, h, 8);
+      ctx.fill();
+    });
+    const end = richBlock(L, code, { x: x + 12, y: top + 10, w: w - 24, size: 14, lineH: 20, mono: true, color: th.text });
+    h = end + 10 - top;
+    return top + h;
+  }
+
   // The tweet's own link, in full (wrapped if it doesn't fit on one line).
   function footerBlock(L, model, x, y, w) {
     if (!model.url) return y;
@@ -422,8 +543,15 @@
     const ip = nested ? 12 : 14, inner = w - ip * 2;
     const size = nested ? 14 : 15, lineH = nested ? 20 : 21;
     let qy = userLine(L, q.user || {}, x + ip, top + ip, nested ? 20 : 22, size, true, inner);
-    if (q.text) qy = textBlock(L, q.text, q.links, x + ip, qy + 6, inner, size, lineH, th.text);
-    if (q.text && q.translatedFrom) qy = translatedNote(L, q.translatedFrom, x + ip, qy + 2, 13);
+    const qText = q.article ? (q.text || '').replace(ARTICLE_URL, '').trim() : q.text;
+    if (qText) qy = textBlock(L, qText, q.links, x + ip, qy + 6, inner, size, lineH, th.text);
+    if (q.article) {
+      // Quoted article: cover, title and preview, like X shows it.
+      if (q.article.cover) qy = mediaBlock(L, [{ type: 'photo', ...q.article.cover }], x + ip, qy + 10, inner, inner * 0.6, 12);
+      qy = richBlock(L, q.article.title, { x: x + ip, y: qy + 8, w: inner, size: size + 2, lineH: lineH + 2, weight: 700, color: th.text, links: [] });
+      if (q.article.preview) qy = richBlock(L, q.article.preview.trimEnd() + '…', { x: x + ip, y: qy + 4, w: inner, size, lineH, color: th.muted, links: [] });
+    }
+    if (qText && q.translatedFrom) qy = translatedNote(L, q.translatedFrom, x + ip, qy + 2, 13);
     if (q.media && q.media.length) qy = mediaBlock(L, q.media, x + ip, qy + 10, inner, nested ? inner * 0.6 : inner, nested ? 10 : 12);
     if (q.quote && level < 2) qy = quoteBlock(L, q.quote, x + ip, qy + 10, inner, level + 1);
     const bottom = qy + ip;
@@ -445,6 +573,11 @@
       if (t.user && t.user.avatar) urls.add(avatarUrl(t.user.avatar));
       for (const m of t.media || []) if (m.url) urls.add(m.url);
       if (t.card && t.card.image && t.card.image.url) urls.add(t.card.image.url);
+      const a = t.article;
+      if (a && a.cover) urls.add(a.cover.url);
+      if (a && t === model) {
+        for (const b of a.blocks || []) for (const m of b.media || []) urls.add(m.url);
+      }
       collect(t.quote);
     };
     collect(model);
@@ -464,8 +597,10 @@
     const innerW = W - PAD * 2;
     let y = PAD;
 
+    const art = model.article;
     let text = model.text || '';
-    const card = model.card && !(model.media && model.media.length) ? model.card : null;
+    if (art) text = text.replace(ARTICLE_URL, '').trim();
+    const card = !art && model.card && !(model.media && model.media.length) ? model.card : null;
     let cardUrlAbove = !!(card && card.url && cardLink === 'above');
     if (card && card.url) {
       const t = text.trimEnd();
@@ -483,6 +618,8 @@
       y = linkCardBlock(L, card, PAD, y + 14, innerW);
     }
 
+    if (art) y = articleBlock(L, art, PAD, y + (text ? 18 : 16), innerW);
+
     if (model.quote) y = quoteBlock(L, model.quote, PAD, y + 14, innerW, 1);
 
     y = footerBlock(L, model, PAD, y, innerW);
@@ -498,9 +635,12 @@
     }
 
     y += PAD;
-    const canvas = new OffscreenCanvas(W * SCALE, Math.ceil(y * SCALE));
+    // A long article can be taller than a canvas may be (32767 px), so lower
+    // the density for those instead of failing.
+    const scale = Math.min(SCALE, 32767 / y);
+    const canvas = new OffscreenCanvas(Math.round(W * scale), Math.floor(y * scale));
     const ctx = canvas.getContext('2d');
-    ctx.scale(SCALE, SCALE);
+    ctx.scale(scale, scale);
     ctx.fillStyle = th.bg;
     ctx.fillRect(0, 0, W, y);
     for (const op of L.ops) op(ctx);

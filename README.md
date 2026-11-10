@@ -6,7 +6,7 @@ Chrome extension (Manifest V3) for x.com / twitter.com.
 | --- | --- |
 | Copy image | Hover a tweet photo (or the full-screen photo viewer) → click the copy button in the top-right corner. Copies the original-size image as PNG. |
 | Download video | Hover a video or GIF → click the download button in the top-right corner. Saves the highest-bitrate MP4 to your Downloads folder. |
-| Share tweet | Hover a tweet → click the picture icon at the start of its top-right icons (before Grok and `···`). Copies the tweet as a clean image card: full text (no "Show more" cut-off), every image uncropped, the link preview with its full URL above it, the quoted tweet, counts, the date in the top-right corner, and a footer with the tweet's full `https://x.com/…` link. Drawn in your X theme; the page doesn't scroll or flash. |
+| Share tweet | Hover a tweet → click the picture icon at the start of its top-right icons (before Grok and `···`). Copies the tweet as a clean image card: full text (no "Show more" cut-off), every image uncropped, the link preview with its full URL above it, the quoted tweet, X Articles in full (cover, title, headings, lists, images), counts, the date in the top-right corner, and a footer with the tweet's full `https://x.com/…` link. Drawn in your X theme; the page doesn't scroll or flash. |
 
 ## Install
 
@@ -30,6 +30,7 @@ The share card shows each tweet as you see it on the page: if you've pressed X's
 
 - `inject.js` runs in the page and reads X's own API responses to learn each video's MP4 URLs. If a URL wasn't seen, `background.js` falls back to the public embed endpoint (`cdn.syndication.twimg.com`).
 - `inject.js` also keeps each tweet's full data (long-tweet text, media, link preview, quoted tweet, counts) for the share card.
+- Timelines only carry an X Article's preview, so for an article post `inject.js` loads the full body from X's own API (`TweetResultByRestId`, using your signed-in session, as the page itself does). If that fails, the card shows the preview.
 - `card.js` draws the share card on a canvas. If X's data for a tweet wasn't seen, it uses the embed endpoint, then the visible page as a last resort.
 - `content.js` adds the hover buttons and handles the clipboard.
 - `background.js` fetches images cross-origin and starts downloads.

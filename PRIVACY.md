@@ -1,6 +1,6 @@
 # Tweetkit Privacy Policy
 
-Last updated: November 9, 2026
+Last updated: November 10, 2026
 
 Tweetkit helps you copy images, download videos and GIFs, and create image cards from posts on X/Twitter.
 
@@ -8,7 +8,7 @@ Tweetkit helps you copy images, download videos and GIFs, and create image cards
 
 On X and Twitter pages, Tweetkit reads post and media information available to your browser, including post text, author names and handles, images, video URLs, links, dates, and engagement counts. It uses this information to provide its controls and create image cards or find downloadable media. Tweetkit processes this information in your browser; its code does not send it to a developer-operated server or use analytics.
 
-When needed, Tweetkit requests images and public post embed data from X's media and syndication servers. Those requests can include a post identifier or media URL and expose ordinary network information, such as your IP address, to X. X's own privacy practices apply to your use of its services.
+When needed, Tweetkit requests images and public post embed data from X's media and syndication servers. To show the full text of an X Article, it requests that post from X's own API on x.com using your existing X session, the same way the X page does. Those requests can include a post identifier or media URL and expose ordinary network information, such as your IP address, to X. X's own privacy practices apply to your use of its services.
 
 If you choose to copy or download content, the resulting image is placed on your clipboard or the video is saved to your device. Your optional Like and Bookmark settings use X's own controls to perform those actions on your behalf.
 
