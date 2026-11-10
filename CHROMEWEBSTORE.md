@@ -34,5 +34,5 @@ The extension processes website content to provide its features. Optional settin
 
 - Privacy policy URL: https://tweetpicker.weierz.com/privacy/ (landing page at https://tweetpicker.weierz.com/; served from `site/` on DMIT, deploy with `rsync -a --delete site/ dmit:/var/www/tweetpicker.weierz.com/`).
 - Store icon: `icons/icon128.png` uploaded to the draft.
-- Screenshot: At least one 1280×800 or 640×400 screenshot is required; not uploaded.
+- Screenshots: `store/screenshots/screenshot-1..4.png` (1280×800, 24-bit PNG, no alpha); regenerate with `store/render.sh`.
 - Distribution, publisher contact, and support URL: Check dashboard settings.

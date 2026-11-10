@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TweetPicker store screenshots</title>
+<!-- Chrome Web Store screenshots (1280x800). Render with store/render.sh.
+     Every account, post and photo here is made up; photos are drawn on a canvas. -->
+<style>
+  :root { --blue: #1d9bf0; --ink: #0f1419; --muted: #536471; --line: #eff3f4; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1280px; height: 800px; overflow: hidden; }
+  body { font: 15px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; color: var(--ink);
+         background: linear-gradient(135deg, #e8f5fe 0%, #f6fbff 55%, #fff8e1 100%); }
+  .scene { position: absolute; inset: 0; display: none; }
+  .scene.on { display: flex; align-items: center; gap: 56px; padding: 0 72px; }
+  .copy { width: 400px; flex: 0 0 400px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; margin-bottom: 28px; }
+  .brand img { width: 40px; height: 40px; }
+  .copy h1 { font-size: 46px; line-height: 1.08; letter-spacing: -0.02em; margin: 0 0 18px; }
+  .copy h1 em { font-style: normal; color: var(--blue); }
+  .copy p { font-size: 20px; line-height: 1.45; color: var(--muted); margin: 0; }
+  .stage { flex: 1; display: flex; justify-content: center; align-items: center; height: 100%; position: relative; }
+
+  /* mock X post */
+  .x { width: 600px; background: #fff; border-radius: 20px; box-shadow: 0 24px 60px rgba(15,20,25,.16), 0 2px 6px rgba(15,20,25,.06); overflow: hidden; }
+  .post { display: flex; gap: 12px; padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+  .post .av { width: 40px; height: 40px; border-radius: 50%; flex: 0 0 40px; }
+  .post .body { flex: 1; min-width: 0; }
+  .post .head { display: flex; align-items: center; gap: 4px; }
+  .post .name { font-weight: 700; }
+  .post .meta { color: var(--muted); }
+  .post .head .icons { margin-left: auto; display: flex; gap: 14px; color: var(--muted); align-items: center; }
+  .post .text { margin: 2px 0 10px; font-size: 15px; line-height: 20px; }
+  .media { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid #cfd9de; }
+  .media canvas { display: block; width: 100%; }
+  .actions { display: flex; justify-content: space-between; color: var(--muted); padding: 10px 40px 2px 0; font-size: 13px; }
+  .actions span { display: flex; align-items: center; gap: 6px; }
+  svg.i { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* the extension's own button (content.css) */
+  .tws-btn { position: absolute; top: 8px; right: 8px; width: 34px; height: 34px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+             background: rgba(15,20,25,.75); color: #fff; backdrop-filter: blur(4px); }
+  .tws-btn.hover { background: rgba(29,155,240,.95); }
+  .tws-btn.ok { background: #00ba7c; }
+  .share-inline { color: var(--blue); box-shadow: 0 0 0 7px rgba(29,155,240,.1); background: rgba(29,155,240,.1); border-radius: 999px; display: flex; }
+  .cursor { position: absolute; width: 22px; height: 22px; pointer-events: none; filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
+  .tip { position: absolute; background: #0f1419; color: #fff; font-weight: 600; font-size: 14px; padding: 8px 12px; border-radius: 10px; white-space: nowrap; box-shadow: 0 8px 20px rgba(0,0,0,.2); }
+  .tip.green { background: #00ba7c; }
+  .play { position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px; border-radius: 50%; background: var(--blue); border: 4px solid #fff; display: grid; place-items: center; }
+  .play::after { content: ''; border-left: 20px solid #fff; border-top: 12px solid transparent; border-bottom: 12px solid transparent; margin-left: 5px; }
+  .dur { position: absolute; left: 10px; bottom: 10px; background: rgba(0,0,0,.7); color: #fff; font-size: 13px; padding: 2px 6px; border-radius: 4px; }
+
+  /* share card output */
+  .cardimg { width: 470px; border-radius: 16px; box-shadow: 0 24px 60px rgba(15,20,25,.2); display: block; }
+  .stack { position: relative; }
+  .stack .back { position: absolute; width: 470px; transform: rotate(-5deg) translate(-70px, 30px); opacity: .95; }
+
+  /* downloads bubble */
+  .dl { position: absolute; right: 20px; top: 40px; width: 330px; background: #fff; border-radius: 14px; box-shadow: 0 16px 40px rgba(15,20,25,.2); padding: 14px 16px; }
+  .dl h4 { margin: 0 0 10px; font-size: 14px; }
+  .dl .row { display: flex; gap: 10px; align-items: center; }
+  .dl .file { width: 36px; height: 36px; border-radius: 8px; background: #e8f5fe; color: var(--blue); display: grid; place-items: center; }
+  .dl .fn { font-weight: 600; font-size: 14px; }
+  .dl .sz { color: var(--muted); font-size: 13px; }
+
+  /* settings popup */
+  .browser { width: 680px; height: 520px; background: #fff; border-radius: 14px; box-shadow: 0 24px 60px rgba(15,20,25,.18); overflow: hidden; position: relative; }
+  .bar { height: 46px; background: #f1f3f4; display: flex; align-items: center; gap: 10px; padding: 0 14px; }
+  .bar .url { flex: 1; height: 30px; border-radius: 15px; background: #fff; display: flex; align-items: center; padding: 0 14px; color: #5f6368; font-size: 14px; }
+  .bar .ext { width: 30px; height: 30px; border-radius: 50%; background: #dfe3e7; display: grid; place-items: center; }
+  .bar .ext img { width: 20px; height: 20px; }
+  .popup { position: absolute; right: 12px; top: 52px; width: 300px; background: #fff; border-radius: 10px; box-shadow: 0 10px 34px rgba(0,0,0,.22); padding: 16px; font-size: 14px; }
+  .popup h5 { font-size: 15px; margin: 0 0 12px; }
+  .popup h5 + .opt { }
+  .popup .gap { height: 8px; }
+  .opt { display: flex; gap: 10px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; font-weight: 600; }
+  .box { width: 16px; height: 16px; border-radius: 3px; border: 1.5px solid #767676; display: grid; place-items: center; }
+  .box.on { background: var(--blue); border-color: var(--blue); }
+  .box.on::after { content: ''; width: 8px; height: 4px; border: 2px solid #fff; border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px, -1px); }
+  .ghost { position: absolute; left: 24px; top: 70px; width: 330px; opacity: .55; }
+  .ghost .line { height: 12px; border-radius: 6px; background: #eef1f3; margin: 12px 0; }
+</style>
+</head>
+<body>
+<script src="../card.js"></script>
+
+<!-- 1. share card -->
+<section class="scene" id="s1">
+  <div class="copy">
+    <div class="brand"><img src="../icons/icon.svg" alt="">TweetPicker</div>
+    <h1>Share any post <em>as an image</em></h1>
+    <p>One click turns a post into a clean card: full text, every photo uncropped, the quoted post, counts, date and link. Drawn in your X theme.</p>
+  </div>
+  <div class="stage"><div class="stack"><img class="cardimg back" id="card1dark" alt=""><img class="cardimg" id="card1" alt="" style="position:relative"></div></div>
+</section>
+
+<!-- 2. copy photo -->
+<section class="scene" id="s2">
+  <div class="copy">
+    <div class="brand"><img src="../icons/icon.svg" alt="">TweetPicker</div>
+    <h1>Copy photos <em>on hover</em></h1>
+    <p>Hover any photo and click copy. The original-size image lands on your clipboard, ready to paste anywhere.</p>
+  </div>
+  <div class="stage">
+    <div class="x">
+      <div class="post">
+        <canvas class="av" data-av="#f59e0b:N"></canvas>
+        <div class="body">
+          <div class="head"><span class="name">Northwind Trails</span><span class="meta">@northwindtrails · 2h</span></div>
+          <div class="text">Sunrise from the ridge this morning. Worth every step of the 4am start. 🏔️</div>
+          <div class="media"><canvas data-photo="ridge" width="1136" height="760"></canvas>
+            <div class="tws-btn hover"><svg class="i" style="width:18px;height:18px;stroke-width:2" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></div>
+            <svg class="cursor" style="right:6px;top:30px" viewBox="0 0 24 24"><path d="M3 2l7 19 2.5-7.5L20 11z" fill="#fff" stroke="#000" stroke-width="1.4" stroke-linejoin="round"/></svg>
+            <div class="tip green" style="right:52px;top:9px">✓ Image copied</div>
+          </div>
+          <div class="actions" data-actions="48,212,1.9K,64K"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. download video -->
+<section class="scene" id="s3">
+  <div class="copy">
+    <div class="brand"><img src="../icons/icon.svg" alt="">TweetPicker</div>
+    <h1>Save videos <em>and GIFs</em></h1>
+    <p>Hover a video and click download. TweetPicker saves the highest-quality MP4 straight to your Downloads folder.</p>
+  </div>
+  <div class="stage">
+    <div class="x">
+      <div class="post">
+        <canvas class="av" data-av="#10b981:K"></canvas>
+        <div class="body">
+          <div class="head"><span class="name">Kettle &amp; Crumb</span><span class="meta">@kettleandcrumb · 5h</span></div>
+          <div class="text">60 seconds of laminating dough. Sound on for the satisfying part.</div>
+          <div class="media"><canvas data-photo="kitchen" width="1136" height="640"></canvas>
+            <div class="play"></div><div class="dur">0:58</div>
+            <div class="tws-btn hover"><svg class="i" style="width:18px;height:18px;stroke-width:2" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></div>
+            <svg class="cursor" style="right:6px;top:30px" viewBox="0 0 24 24"><path d="M3 2l7 19 2.5-7.5L20 11z" fill="#fff" stroke="#000" stroke-width="1.4" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="actions" data-actions="132,860,7.4K,310K"></div>
+        </div>
+      </div>
+    </div>
+    <div class="dl">
+      <h4>Recent download</h4>
+      <div class="row"><div class="file"><svg class="i" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></div>
+        <div><div class="fn">kettleandcrumb-1855.mp4</div><div class="sz">1080p · 14.2 MB · Done</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. share button + settings -->
+<section class="scene" id="s4">
+  <div class="copy">
+    <div class="brand"><img src="../icons/icon.svg" alt="">TweetPicker</div>
+    <h1>Small buttons, <em>your rules</em></h1>
+    <p>Optionally like or bookmark a post when you copy or share it, and expand long posts automatically. Everything is off by default and stays in your browser.</p>
+  </div>
+  <div class="stage">
+    <div class="browser">
+      <div class="bar">
+        <span style="display:flex;gap:7px"><i style="width:12px;height:12px;border-radius:50%;background:#ff5f57"></i><i style="width:12px;height:12px;border-radius:50%;background:#febc2e"></i><i style="width:12px;height:12px;border-radius:50%;background:#28c840"></i></span>
+        <div class="url">x.com/home</div>
+        <div class="ext" style="box-shadow:0 0 0 3px rgba(29,155,240,.35)"><img src="../icons/icon.svg" alt=""></div>
+      </div>
+      <div class="ghost">
+        <div style="display:flex;gap:12px;align-items:center"><canvas class="av" data-av="#6366f1:L" style="width:40px;height:40px;border-radius:50%"></canvas>
+          <div style="flex:1"><b>Lumen Notes</b> <span style="color:#536471">@lumennotes · 1h</span></div>
+          <span class="share-inline"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></span></div>
+        <div class="line" style="width:95%"></div><div class="line" style="width:80%"></div><div class="line" style="width:60%"></div>
+        <div style="height:150px;border-radius:14px;background:#eef1f3;margin-top:14px"></div>
+      </div>
+      <div class="tip" style="left:222px;top:112px">Share as image</div>
+      <div class="popup">
+        <h5>When copying or sharing</h5>
+        <div class="opt"><span class="box on"></span>Like</div>
+        <div class="opt"><span class="box on"></span>Bookmark</div>
+        <div class="gap"></div>
+        <h5>While browsing</h5>
+        <div class="opt"><span class="box"></span>Expand "Show more"</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+const ICON = {
+  reply: '<path d="M4 12a8 8 0 0 1 8-8h1a7 7 0 0 1 0 14H9l-4 3v-4.5A8 8 0 0 1 4 12z"/>',
+  repost: '<path d="M7 7h11l-3-3M17 17H6l3 3"/><path d="M18 7v5M6 17v-5"/>',
+  like: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+  views: '<path d="M5 20V12M10 20V6M15 20v-9M20 20V9"/>',
+};
+document.querySelectorAll('[data-actions]').forEach((el) => {
+  const n = el.dataset.actions.split(',');
+  el.innerHTML = ['reply', 'repost', 'like', 'views'].map((k, i) => `<span><svg class="i" viewBox="0 0 24 24">${ICON[k]}</svg>${n[i]}</span>`).join('');
+});
+
+// ---- canvas-drawn pictures (no real photos) ----
+function avatar(c, color, letter, size = 120) {
+  c.width = c.height = size;
+  const x = c.getContext('2d');
+  const g = x.createLinearGradient(0, 0, size, size);
+  g.addColorStop(0, color); g.addColorStop(1, '#0f1419');
+  x.fillStyle = g; x.fillRect(0, 0, size, size);
+  x.fillStyle = '#fff'; x.font = `700 ${size * 0.5}px -apple-system, sans-serif`;
+  x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(letter, size / 2, size / 2 + size * 0.03);
+  return c;
+}
+function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
+function ridge(c) {
+  const x = c.getContext('2d'), w = c.width, h = c.height, r = rng(7);
+  const sky = x.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, '#2b3a67'); sky.addColorStop(0.45, '#f08a5d'); sky.addColorStop(0.7, '#ffd479'); sky.addColorStop(1, '#ffe9b0');
+  x.fillStyle = sky; x.fillRect(0, 0, w, h);
+  x.fillStyle = 'rgba(255,240,200,.95)'; x.beginPath(); x.arc(w * 0.62, h * 0.6, h * 0.09, 0, 7); x.fill();
+  const layers = ['#6b4f7a', '#4a3a63', '#33294b', '#1f1a33'];
+  layers.forEach((col, i) => {
+    x.fillStyle = col; x.beginPath(); x.moveTo(0, h);
+    let y = h * (0.5 + i * 0.1);
+    for (let px = 0; px <= w; px += w / 14) { y += (r() - 0.5) * h * 0.14; y = Math.min(h * 0.95, Math.max(h * 0.35 + i * h * 0.08, y)); x.lineTo(px, y); }
+    x.lineTo(w, h); x.fill();
+  });
+}
+function kitchen(c) {
+  const x = c.getContext('2d'), w = c.width, h = c.height;
+  const bg = x.createLinearGradient(0, 0, w, h);
+  bg.addColorStop(0, '#d6b48c'); bg.addColorStop(1, '#8a6240');
+  x.fillStyle = bg; x.fillRect(0, 0, w, h);
+  for (let i = 0; i < 18; i++) { x.strokeStyle = `rgba(90,60,30,${0.08 + (i % 3) * 0.04})`; x.lineWidth = 6; x.beginPath(); x.moveTo(0, i * 40 + 10); x.bezierCurveTo(w * .3, i * 40 - 20, w * .7, i * 40 + 40, w, i * 40); x.stroke(); }
+  x.save(); x.translate(w * 0.5, h * 0.55); x.rotate(-0.08);
+  x.fillStyle = '#f7ead2'; x.shadowColor = 'rgba(0,0,0,.35)'; x.shadowBlur = 30; x.shadowOffsetY = 12;
+  x.beginPath(); x.roundRect(-w * 0.3, -h * 0.22, w * 0.6, h * 0.44, 40); x.fill(); x.shadowColor = 'transparent';
+  for (let i = 0; i < 7; i++) { x.strokeStyle = 'rgba(200,160,100,.45)'; x.lineWidth = 3; x.beginPath(); x.moveTo(-w * 0.28, -h * 0.18 + i * h * 0.06); x.lineTo(w * 0.28, -h * 0.18 + i * h * 0.06); x.stroke(); }
+  x.fillStyle = '#f2d08a'; x.beginPath(); x.roundRect(-w * 0.12, -h * 0.07, w * 0.24, h * 0.14, 14); x.fill();
+  x.restore();
+  x.fillStyle = '#c9c2b6'; x.save(); x.translate(w * 0.82, h * 0.25); x.rotate(0.5); x.beginPath(); x.roundRect(-20, -150, 40, 300, 20); x.fill(); x.restore();
+}
+function harbor(c) {
+  const x = c.getContext('2d'), w = c.width, h = c.height, r = rng(3);
+  const sky = x.createLinearGradient(0, 0, 0, h * 0.6);
+  sky.addColorStop(0, '#7cc4f2'); sky.addColorStop(1, '#d9f0ff');
+  x.fillStyle = sky; x.fillRect(0, 0, w, h);
+  const sea = x.createLinearGradient(0, h * 0.6, 0, h);
+  sea.addColorStop(0, '#2e86c1'); sea.addColorStop(1, '#154f7a');
+  x.fillStyle = sea; x.fillRect(0, h * 0.6, w, h * 0.4);
+  const cols = ['#e76f51', '#f4a261', '#e9c46a', '#2a9d8f', '#f1faee', '#e63946', '#a8dadc'];
+  let px = 0;
+  while (px < w) { const bw = 60 + r() * 70, bh = h * (0.18 + r() * 0.2); x.fillStyle = cols[Math.floor(r() * cols.length)]; x.fillRect(px, h * 0.6 - bh, bw, bh);
+    x.fillStyle = 'rgba(255,255,255,.7)'; for (let wy = h * 0.6 - bh + 16; wy < h * 0.6 - 20; wy += 30) for (let wx = px + 10; wx < px + bw - 14; wx += 24) x.fillRect(wx, wy, 10, 14);
+    x.fillStyle = '#5b4636'; x.beginPath(); x.moveTo(px - 4, h * 0.6 - bh); x.lineTo(px + bw / 2, h * 0.6 - bh - 36); x.lineTo(px + bw + 4, h * 0.6 - bh); x.fill(); px += bw + 2; }
+  for (let i = 0; i < 40; i++) { x.fillStyle = 'rgba(255,255,255,.25)'; x.fillRect(r() * w, h * 0.62 + r() * h * 0.36, 30 + r() * 60, 3); }
+}
+const PICS = { ridge, kitchen, harbor };
+document.querySelectorAll('canvas[data-photo]').forEach((c) => PICS[c.dataset.photo](c));
+document.querySelectorAll('canvas[data-av]').forEach((c) => { const [col, l] = c.dataset.av.split(':'); avatar(c, col, l); });
+
+// ---- the real share card, drawn by the extension's card.js ----
+function picture(kind, w, h) { const c = new OffscreenCanvas(w, h); PICS[kind](c); return c; }
+async function loadImage(url) {
+  if (url.includes('avatar-ava')) { const c = document.createElement('canvas'); return createImageBitmap(avatar(c, '#1d9bf0', 'H', 200)); }
+  if (url.includes('avatar-q')) { const c = document.createElement('canvas'); return createImageBitmap(avatar(c, '#e76f51', 'P', 200)); }
+  if (url.includes('harbor')) return createImageBitmap(picture('harbor', 1200, 800));
+  if (url.includes('ridge')) return createImageBitmap(picture('ridge', 1200, 800));
+  return null;
+}
+const model = {
+  id: '1', url: 'https://x.com/harborlightco/status/1855201934477',
+  user: { name: 'Harbor Light Co.', handle: 'harborlightco', avatar: 'https://example.invalid/avatar-ava.png', verified: true },
+  createdAt: '2026-11-08T09:41:00Z',
+  text: 'Spent the weekend sketching the old harbor before the renovation starts. Every one of these houses has stood here for over a century, and each was painted by whoever lived in it.\n\nFull photo set and the story behind each colour in the thread below 👇',
+  links: [],
+  media: [{ type: 'photo', url: 'https://example.invalid/harbor.jpg', w: 1200, h: 800 }],
+  quote: {
+    id: '2', user: { name: 'Pier Archive', handle: 'pierarchive', avatar: 'https://example.invalid/avatar-q.png' },
+    createdAt: '2026-11-07T18:20:00Z', text: 'Renovation of the north quay begins on 1 December. Here is what is planned, street by street.', links: [], media: [],
+  },
+  counts: { replies: 214, reposts: 1840, likes: 12600, views: 482000 },
+};
+(async () => {
+  for (const [id, theme] of [['card1', 'light'], ['card1dark', 'dark']]) {
+    const blob = await TwsCard.render(model, { theme, loadImage });
+    document.getElementById(id).src = URL.createObjectURL(blob);
+  }
+  const s = new URLSearchParams(location.search).get('s') || '1';
+  document.getElementById('s' + s).classList.add('on');
+  await Promise.all([...document.images].map((i) => i.decode().catch(() => {})));
+  document.title = 'ready';
+})();
+</script>
+</body>
+</html>
