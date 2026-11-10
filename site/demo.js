@@ -177,35 +177,29 @@
     };
     const jump = (x, y) => { cur.style.transition = 'none'; cur.style.transform = `translate(${x}px, ${y}px)`; cur.offsetWidth; cur.style.transition = ''; };
     const click = async () => { cur.classList.add('press'); await wait(140); cur.classList.remove('press'); await wait(120); };
-    const tipAt = (tip, el, side) => {
-      const s = stage.getBoundingClientRect(), r = el.getBoundingClientRect(), t = tip.getBoundingClientRect();
-      let x = side === 'left' ? r.left - s.left - t.width - 8 : r.left - s.left + r.width / 2 - t.width / 2;
-      let y = side === 'left' ? r.top - s.top + r.height / 2 - t.height / 2 : r.top - s.top - t.height - 8;
-      x = Math.max(4, Math.min(x, s.width - t.width - 4));
-      tip.style.left = x + 'px'; tip.style.top = y + 'px';
-    };
-    const api = { wait, move, jump, click, tipAt, stage };
+    const api = { wait, move, jump, click, stage };
     (async () => { for (;;) await script(api); })();
   }
 
   // ---------- hero: share a post ----------
   {
     const root = $('#demo-share');
-    const post = $('[data-hover-target]', root), ic = $('[data-share]', root), out = $('[data-out]', root), tip = $('[data-tip]', root);
+    const post = $('[data-hover-target]', root), ic = $('[data-share]', root), out = $('[data-out]', root);
+    const icon = ic.innerHTML, check = '<svg class="i"><use href="#i-check"/></svg>';
     const final = () => { post.classList.add('hovered'); out.classList.add('on'); };
-    ready.a.then(() => runner(root, async ({ wait, move, jump, click, tipAt, stage }) => {
-      post.classList.remove('hovered'); ic.className = 'share-ic'; out.classList.remove('on'); tip.classList.remove('on');
+    ready.a.then(() => runner(root, async ({ wait, move, jump, click, stage }) => {
+      post.classList.remove('hovered'); ic.className = 'share-ic'; ic.innerHTML = icon; out.classList.remove('on');
       jump(stage.clientWidth * 0.48, stage.clientHeight + 30);
       await wait(700);
       await move(post, 0.45, 0.35, 850);
       post.classList.add('hovered');
       await wait(500);
       await move(ic, 0.5, 0.55, 750);
-      ic.classList.add('hot'); tipAt(tip, ic); tip.classList.add('on');
-      await wait(700);
+      ic.classList.add('hot');
+      await wait(500);
       await click();
-      tip.classList.remove('on'); ic.classList.remove('hot'); ic.classList.add('ok');
-      await wait(250);
+      ic.classList.remove('hot'); ic.classList.add('ok'); ic.innerHTML = check;
+      await move(ic, 1.4, 2.2, 450); // step aside so the check shows
       out.classList.add('on');
       await wait(4500);
       await move([stage.clientWidth * 0.48, stage.clientHeight + 30], 0, 0, 700);
@@ -218,15 +212,15 @@
   {
     const root = $('#demo-hover');
     const pm = $('[data-photo-media]', root), vm = $('[data-video-media]', root);
-    const pb = $('[data-btn]', pm), vb = $('[data-btn]', vm), tip = $('[data-tip]', root), chip = $('[data-chip]', root);
-    const pIcon = pb.innerHTML;
+    const pb = $('[data-btn]', pm), vb = $('[data-btn]', vm);
+    const pIcon = pb.innerHTML, vIcon = vb.innerHTML, check = '<svg><use href="#i-check"/></svg>';
     const reset = () => {
       [pm, vm].forEach((m) => m.classList.remove('hovered'));
       [pb, vb].forEach((b) => b.classList.remove('hot', 'ok'));
-      pb.innerHTML = pIcon; tip.classList.remove('on'); chip.classList.remove('on');
+      pb.innerHTML = pIcon; vb.innerHTML = vIcon;
     };
     const final = () => { pm.classList.add('hovered'); vm.classList.add('hovered'); };
-    runner(root, async ({ wait, move, jump, click, tipAt, stage }) => {
+    runner(root, async ({ wait, move, jump, click, stage }) => {
       reset();
       const outside = [stage.clientWidth + 30, stage.clientHeight * 0.3];
       jump(...outside);
@@ -238,10 +232,9 @@
       pb.classList.add('hot');
       await wait(300);
       await click();
-      pb.classList.remove('hot'); pb.classList.add('ok'); pb.innerHTML = '<svg><use href="#i-check"/></svg>';
-      tipAt(tip, pb, 'left'); tip.classList.add('on');
-      await wait(1400);
-      tip.classList.remove('on');
+      pb.classList.remove('hot'); pb.classList.add('ok'); pb.innerHTML = check;
+      await move(pb, 0.2, 1.9, 400);
+      await wait(1000);
       await move(vm, 0.3, 0.75, 450);
       pm.classList.remove('hovered');
       await wait(400);
@@ -251,16 +244,12 @@
       vb.classList.add('hot');
       await wait(300);
       await click();
-      vb.classList.remove('hot'); vb.classList.add('ok');
-      await wait(300);
-      chip.classList.add('on');
-      await wait(1500);
+      vb.classList.remove('hot'); vb.classList.add('ok'); vb.innerHTML = check;
+      await move(vb, 0.2, 1.9, 400);
+      await wait(1200);
       await move([stage.clientWidth + 30, stage.clientHeight * 0.6], 0, 0, 800);
       vm.classList.remove('hovered');
       await wait(1400);
-      chip.classList.remove('on');
-      pb.innerHTML = pIcon;
-      await wait(500);
     }, final);
   }
 
