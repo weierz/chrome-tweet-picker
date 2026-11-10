@@ -1,4 +1,4 @@
-# Chrome Web Store — Tweetkit
+# Chrome Web Store — TweetPicker
 
 Last updated: 2026-11-09
 
@@ -10,7 +10,7 @@ Last updated: 2026-11-09
 - Language: English (United States)
 - Single purpose: Help users copy, download, and share content from posts on X/Twitter.
 
-Tweetkit adds convenient tools to X and Twitter.
+TweetPicker adds convenient tools to X and Twitter.
 
 • Copy photos: hover over a photo and click the copy button to copy the original-size image.
 • Download videos and GIFs: hover over a video or GIF and click download to save an available MP4.

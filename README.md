@@ -1,4 +1,4 @@
-# Tweetkit
+# TweetPicker
 
 Chrome extension (Manifest V3) for x.com / twitter.com.
 
