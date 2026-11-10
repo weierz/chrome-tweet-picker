@@ -80,4 +80,8 @@ Open x.com tabs pick up the extension, and later updates, without a refresh.
 
 TweetPicker only talks to X's own servers. No account, no analytics, nothing sent anywhere else. See [PRIVACY.md](PRIVACY.md).
 
+## License
+
+Copyright © 2026 Weier Zhang. Licensed under the [GNU Affero General Public License v3.0](LICENSE).
+
 Not affiliated with X Corp.
