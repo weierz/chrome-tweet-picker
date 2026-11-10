@@ -4,64 +4,221 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TweetPicker — copy, download and share from X</title>
-<meta name="description" content="TweetPicker is a Chrome extension for X/Twitter: copy images on hover, download videos and GIFs, and share any post as a clean image card.">
+<meta name="description" content="TweetPicker is a Chrome extension for X/Twitter: buttons that appear only on hover to copy photos, download videos and share any post as a complete image card with full links and the original post URL.">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/style.css?v=dev">
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-pic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></symbol>
+  <symbol id="i-grok" viewBox="0 0 24 24"><path d="M5 19 19 5"/><circle cx="12" cy="12" r="7.5"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></symbol>
+  <symbol id="i-badge" viewBox="0 0 24 24"><path d="M12 2.5l2.2 1.7 2.8-.2.9 2.6 2.3 1.6-.8 2.7.8 2.7-2.3 1.6-.9 2.6-2.8-.2L12 21.5l-2.2-1.7-2.8.2-.9-2.6-2.3-1.6.8-2.7-.8-2.7 2.3-1.6.9-2.6 2.8.2z" fill="#1d9bf0" stroke="none"/><path d="M8.5 12.2l2.3 2.3 4.7-4.9" stroke="#fff" stroke-width="2"/></symbol>
+  <symbol id="i-cursor" viewBox="0 0 24 24"><path d="M3 2l7 19 2.5-7.5L20 11z" fill="#fff" stroke="#000" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+</svg>
+
 <div class="wrap">
   <header class="top">
     <a class="brand" href="/"><img src="/icon.svg" alt="">TweetPicker</a>
-    <nav><a href="#features">Features</a><a href="/privacy/">Privacy</a></nav>
+    <nav><a class="wide" href="#features">Features</a><a href="#how">How to use</a><a href="/privacy/">Privacy</a></nav>
   </header>
 
   <section class="hero">
-    <img src="/icon.svg" alt="TweetPicker icon">
-    <h1>Copy, download and share<br>from X, in one click</h1>
-    <p>A Chrome extension that adds small, quiet buttons to X/Twitter: copy photos, save videos, and turn any post into a clean image card.</p>
+    <h1>Pick anything off X.<br><em>Nothing in your way.</em></h1>
+    <p class="lead">Copy photos, save videos, and turn any post into one complete image, with its quotes, previews, full links and the original post URL. The buttons only show up when you hover.</p>
     <span class="btn disabled" aria-disabled="true">Chrome Web Store — coming soon</span>
     <span class="note">Free. No account, no analytics, no developer server.</span>
   </section>
 
-  <div class="features" id="features">
-    <div class="feature">
-      <div class="ico"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></div>
-      <h3>Copy photos</h3>
-      <p>Hover a photo, or open it full screen, and click copy. You get the original-size image on your clipboard.</p>
-    </div>
-    <div class="feature">
-      <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg></div>
-      <h3>Download videos &amp; GIFs</h3>
-      <p>Hover a video or GIF and click download to save the highest-quality MP4 to your Downloads folder.</p>
-    </div>
-    <div class="feature">
-      <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 16 5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.5"/></svg></div>
-      <h3>Share posts as images</h3>
-      <p>Turn a post into an image card: full text, uncropped media, quoted post, link preview, counts, date and link — drawn in your X theme.</p>
+  <!-- hero demo: share a post as an image -->
+  <div class="demo" id="demo-share" style="margin:40px 0 24px" aria-label="Animation: hovering a post shows a picture icon; clicking it copies the whole post as an image card">
+    <div class="stagebox share-demo">
+      <div class="x" data-hover-target>
+        <div class="post">
+          <canvas class="av" data-av="#1d9bf0:H"></canvas>
+          <div class="body">
+            <div class="head"><span class="name">Harbor Light Co.</span><svg class="i" style="width:17px;height:17px;flex:none"><use href="#i-badge"/></svg><span class="meta"><span class="h">@harborlightco · </span>2h</span>
+              <span class="icons"><span class="share-ic" data-share><svg class="i"><use href="#i-pic"/></svg></span><svg class="i"><use href="#i-grok"/></svg><svg class="i"><use href="#i-more"/></svg></span></div>
+            <div class="txt">New on the journal: <span class="lnk">harborlight.co/journal/2026/nor…</span><br><br>We spent six months in the town archive tracing every house on the north quay: who built it, who painted it which colour…</div>
+            <span class="showmore">Show more</span>
+            <div class="quote">
+              <div class="qh"><canvas data-av="#e76f51:P"></canvas><b>Pier Archive</b><span style="color:var(--muted)">@pierarchive · 1d</span></div>
+              <div class="qt">Renovation of the north quay begins on 1 December. Here is what is planned, street by street.</div>
+              <canvas class="qimg" data-photo="harbor" width="1136" height="560"></canvas>
+            </div>
+            <div class="actions" data-actions="214,1.8K,12.6K,482K"></div>
+          </div>
+        </div>
+      </div>
+      <div class="out" data-out>
+        <div class="ph">Hover the post, then click the picture icon</div>
+        <span class="paste">✓ Copied, ready to paste</span>
+        <img data-card="a" alt="The share card TweetPicker made from the post: full text with the full link, the quoted post and its photo, counts, date and the post's x.com link">
+      </div>
+      <div class="tip" data-tip>Copy tweet as image</div>
+      <div class="cursor" data-cursor><svg viewBox="0 0 24 24" width="22" height="22"><use href="#i-cursor"/></svg></div>
     </div>
   </div>
 
-  <section class="block">
-    <h2>Optional extras</h2>
-    <ul>
-      <li><strong>Like</strong> and/or <strong>Bookmark</strong> a post automatically after you copy or share it.</li>
-      <li><strong>Expand "Show more"</strong> on long posts in your timeline as they appear.</li>
-      <li>If you've pressed X's "Show translation", the card uses that translation.</li>
-    </ul>
-    <p style="color:var(--muted);margin:12px 0 0">All extras are off by default. Click the toolbar icon to turn them on.</p>
+  <div id="features"></div>
+
+  <!-- 1. hover to show -->
+  <section class="feat">
+    <div class="text">
+      <p class="kicker">Out of your way</p>
+      <h2>Buttons appear only when you hover</h2>
+      <p>No toolbars, badges or extra rows in your timeline. Point at a photo, a video or a post and its button fades in; move on and it's gone. X looks exactly like X.</p>
+      <ul class="ticks">
+        <li>Copy the original-size photo, also in the full-screen viewer</li>
+        <li>Save the best-quality MP4 of a video or GIF</li>
+        <li>A green check confirms it worked, right where you clicked</li>
+      </ul>
+    </div>
+    <div class="demo" id="demo-hover" aria-label="Animation: copy and download buttons appear only while the pointer is over a photo or video">
+      <div class="stagebox">
+        <div class="x">
+          <div class="post">
+            <canvas class="av" data-av="#f59e0b:N"></canvas>
+            <div class="body">
+              <div class="head"><span class="name">Northwind Trails</span><span class="meta"><span class="h">@northwindtrails · </span>2h</span></div>
+              <div class="txt">Sunrise from the ridge this morning. Worth every step of the 4am start. 🏔️</div>
+              <div class="media" data-photo-media><canvas data-photo="ridge" width="1136" height="600"></canvas>
+                <div class="tp-btn" data-btn><svg><use href="#i-copy"/></svg></div></div>
+            </div>
+          </div>
+          <div class="post">
+            <canvas class="av" data-av="#10b981:K"></canvas>
+            <div class="body">
+              <div class="head"><span class="name">Kettle &amp; Crumb</span><span class="meta"><span class="h">@kettleandcrumb · </span>5h</span></div>
+              <div class="txt">60 seconds of laminating dough. Sound on for the satisfying part.</div>
+              <div class="media" data-video-media><canvas data-photo="kitchen" width="1136" height="600"></canvas>
+                <div class="play"></div><div class="dur">0:58</div>
+                <div class="tp-btn" data-btn><svg><use href="#i-dl"/></svg></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="tip green" data-tip>✓ Image copied</div>
+        <div class="chip" data-chip><div class="f"><svg class="i"><use href="#i-dl"/></svg></div><div><b>kettleandcrumb-1855.mp4</b><small>1080p · 14.2 MB · Saved</small></div></div>
+        <div class="cursor" data-cursor><svg viewBox="0 0 24 24" width="22" height="22"><use href="#i-cursor"/></svg></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. everything embedded -->
+  <section class="feat flip">
+    <div class="text">
+      <p class="kicker">The whole post, in one image</p>
+      <h2>Everything embedded comes along</h2>
+      <p>A screenshot cuts things off. TweetPicker redraws the post from X's own data, so the image holds everything the post holds:</p>
+      <ul class="ticks">
+        <li>The full text, never cut at "Show more"</li>
+        <li>Every photo, uncropped</li>
+        <li>The quoted post, and the post it quotes</li>
+        <li>Link previews and X Articles in full</li>
+        <li>Counts and the date, in your X theme</li>
+      </ul>
+      <p>No scrolling, no flashing: the page stays still while the image is made.</p>
+    </div>
+    <div class="demo cardview">
+      <img data-card="b" alt="A share card with two uncropped photos of different shapes and a quoted post">
+    </div>
+  </section>
+
+  <!-- 3. full URLs -->
+  <section class="feat">
+    <div class="text">
+      <p class="kicker">Links you can read</p>
+      <h2>Full URLs, not <span style="color:var(--accent)">site.com/pa…</span></h2>
+      <p>X shortens every link in a post. In the image, TweetPicker writes each link out in full, so whoever sees it knows exactly where it goes and can type it in.</p>
+    </div>
+    <div class="demo">
+      <div class="compare">
+        <div class="row"><div class="lbl">On X</div><div class="u">harborlight.co/journal/2026/nor…</div></div>
+        <div class="row good"><div class="lbl">In TweetPicker's image</div><div class="u">https://harborlight.co/journal/2026/north-quay-houses-before-the-renovation</div></div>
+        <div class="row"><div class="lbl">Link preview on X</div><div class="u">From harborlight.co</div></div>
+        <div class="row good"><div class="lbl">Link preview in the image</div><div class="u">https://harborlight.co/journal/2026/north-quay-houses-before-the-renovation <span style="color:var(--muted)">(shown above the preview)</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. source URL -->
+  <section class="feat flip">
+    <div class="text">
+      <p class="kicker">Credit built in</p>
+      <h2>The original post's link is in the image</h2>
+      <p>Every image ends with the post's own <code>https://x.com/…</code> address. Share it in a chat, a doc or a slide, and the source travels with it: anyone can find the original post, its replies and its author.</p>
+    </div>
+    <div class="demo">
+      <div class="x" style="padding:16px 18px">
+        <div class="ghostline" style="width:92%"></div><div class="ghostline" style="width:78%"></div><div class="ghostline" style="width:54%"></div>
+        <div style="display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin:16px 0 12px"><span>214 replies</span><span>1.8K reposts</span><span>12.6K likes</span><span>482K views</span></div>
+        <div style="border-top:1px solid var(--x-line);padding-top:12px;display:flex;align-items:center;gap:8px;font-size:13px">
+          <img src="/icon.svg" alt="" style="width:18px;height:18px">
+          <span style="color:var(--accent);overflow-wrap:anywhere;font-weight:600">https://x.com/harborlightco/status/1855201934477051392</span>
+        </div>
+      </div>
+      <p style="margin:12px 4px 0;color:var(--muted);font-size:14px">The footer of every image TweetPicker makes.</p>
+    </div>
+  </section>
+
+  <!-- 5. auto expand -->
+  <section class="feat">
+    <div class="text">
+      <p class="kicker">Optional</p>
+      <h2>Long posts open by themselves</h2>
+      <p>Turn on <b>Expand "Show more"</b> and long posts open in place as they scroll into view, using X's own button. Read the whole thing without a single click, and without leaving your timeline.</p>
+      <p style="font-size:15px">Off by default. Click the TweetPicker icon in Chrome's toolbar to turn it on.</p>
+    </div>
+    <div class="demo" id="demo-expand" aria-label="Animation: a long post's Show more opens automatically">
+      <div class="pill"><img src="/icon.svg" alt="">Expand "Show more" <i></i></div>
+      <div class="x">
+        <div class="post">
+          <canvas class="av" data-av="#6366f1:L"></canvas>
+          <div class="body">
+            <div class="head"><span class="name">Lumen Notes</span><span class="meta"><span class="h">@lumennotes · </span>1h</span></div>
+            <div class="txt ex-txt" data-ex>Three things I learned from a year of writing every morning:<br><br>1. The first 20 minutes are warm-up. Don't judge them; the good sentences come after.<br><br>2. Stop mid-sentence. Tomorrow you'll know exactly where to start, and starting is the hardest part.<br><br>3. Keep a "parking lot" file. Every idea that doesn't fit today goes there, and half of next month's pieces start in it.<br><br>None of this is new advice. It only worked once I actually did it every day.</div>
+            <span class="ex-more" data-more>Show more</span>
+            <div class="actions" data-actions="38,96,1.1K,41K"></div>
+          </div>
+        </div>
+        <div class="post" style="opacity:.55">
+          <canvas class="av" data-av="#0ea5e9:S"></canvas>
+          <div class="body"><div class="ghostline" style="width:40%"></div><div class="ghostline" style="width:90%"></div><div class="ghostline" style="width:70%"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- how to use -->
+  <section class="block" id="how">
+    <p class="kicker">How to use</p>
+    <h2>Hover, click, paste</h2>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Install</h3><p>Add TweetPicker to Chrome and pin it. x.com tabs that are already open work right away, no reload.</p></div>
+      <div class="step"><div class="n">2</div><h3>Copy a photo</h3><p>Hover a photo and click <span class="ic"><svg class="i"><use href="#i-copy"/></svg></span> in its top-right corner. Paste anywhere.</p></div>
+      <div class="step"><div class="n">3</div><h3>Save a video</h3><p>Hover a video or GIF and click <span class="ic"><svg class="i"><use href="#i-dl"/></svg></span>. The MP4 goes to your Downloads folder.</p></div>
+      <div class="step"><div class="n">4</div><h3>Share a post</h3><p>Hover a post and click <span class="ic blue"><svg class="i"><use href="#i-pic"/></svg></span>, the first of its top-right icons. The image is on your clipboard.</p></div>
+    </div>
+    <p style="margin-top:22px">Click the toolbar icon for the options, all off by default: <b>Like</b> or <b>Bookmark</b> a post when you copy or share it, and <b>Expand "Show more"</b>. A green check means it worked; a red ✕ shows why it didn't when you hover it.</p>
   </section>
 
   <section class="block">
-    <h2>Private by design</h2>
-    <p style="margin:0">TweetPicker works entirely in your browser. It only talks to X's own servers, the same way the X page does, and never sends your data anywhere else. Read the <a href="/privacy/">privacy policy</a>.</p>
+    <p class="kicker">Privacy</p>
+    <h2>Stays in your browser</h2>
+    <p>TweetPicker only talks to X's own servers, the same way the X page does. No account, no analytics, and nothing is sent to us. Read the <a href="/privacy/">privacy policy</a>.</p>
   </section>
 
   <footer>
     <span>© 2026 TweetPicker</span>
     <a href="/privacy/">Privacy policy</a>
     <a href="mailto:will.b.chang@gmail.com">Contact</a>
-    <span>Not affiliated with X Corp.</span>
+    <span>Not affiliated with X Corp. Accounts and posts shown are made up.</span>
   </footer>
 </div>
+<script src="/card.js?v=dev"></script>
+<script src="/demo.js?v=dev"></script>
 </body>
 </html>
