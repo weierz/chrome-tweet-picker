@@ -32,7 +32,7 @@ Optional settings let you automatically like or bookmark a post after copying or
 
 The extension processes website content to provide its features. Optional settings use Chrome sync storage. It requests media and public embed data from X's servers; the inspected code does not send content to a separate developer server. Website content is disclosed in the dashboard. The three data-use certifications are checked based on the inspected code.
 
-- Privacy policy URL: Still required; no hosted policy identified.
+- Privacy policy URL: https://tweetpicker.weierz.com/privacy/ (served from `site/` on DMIT; needs DNS record and HTTPS before it is live).
 - Store icon: `icons/icon128.png` uploaded to the draft.
 - Screenshot: At least one 1280×800 or 640×400 screenshot is required; not uploaded.
 - Distribution, publisher contact, and support URL: Check dashboard settings.
