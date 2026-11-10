@@ -202,14 +202,50 @@
   <!-- how to use -->
   <section class="block" id="how">
     <p class="kicker">How to use</p>
-    <h2>Hover, click, paste</h2>
-    <div class="steps">
-      <div class="step"><div class="n">1</div><h3>Install</h3><p>Add TweetPicker to Chrome and pin it. x.com tabs that are already open work right away, no reload.</p></div>
-      <div class="step"><div class="n">2</div><h3>Copy a photo</h3><p>Hover a photo and click <span class="ic"><svg class="i"><use href="#i-copy"/></svg></span> in its top-right corner. Paste anywhere.</p></div>
-      <div class="step"><div class="n">3</div><h3>Save a video</h3><p>Hover a video or GIF and click <span class="ic"><svg class="i"><use href="#i-dl"/></svg></span>. The MP4 goes to your Downloads folder.</p></div>
-      <div class="step"><div class="n">4</div><h3>Share a post</h3><p>Hover a post and click <span class="ic blue"><svg class="i"><use href="#i-pic"/></svg></span>, the first of its top-right icons. The image is on your clipboard.</p></div>
+    <h2>Hover what you want. The button is right there.</h2>
+    <p>No setup: install it, open x.com, and point at a photo, a video or a post. Tabs that are already open work without a reload.</p>
+    <div class="where">
+      <div class="wcard">
+        <div class="sk sk-photo"><span class="sk-btn"><svg><use href="#i-copy"/></svg></span></div>
+        <h3>Copy a photo</h3>
+        <p>Button in the photo's <b>top-right corner</b>. Then paste anywhere.</p>
+      </div>
+      <div class="wcard">
+        <div class="sk sk-video"><span class="sk-play"></span><span class="sk-btn"><svg><use href="#i-dl"/></svg></span></div>
+        <h3>Save a video or GIF</h3>
+        <p>Button in the video's <b>top-right corner</b>. The MP4 lands in Downloads.</p>
+      </div>
+      <div class="wcard">
+        <div class="sk sk-post">
+          <div class="sk-head"><i class="sk-av"></i><i class="sk-name"></i>
+            <span class="sk-icons"><span class="sk-pic"><svg class="i"><use href="#i-pic"/></svg></span><svg class="i"><use href="#i-grok"/></svg><svg class="i"><use href="#i-more"/></svg></span></div>
+          <i class="sk-line" style="width:90%"></i><i class="sk-line" style="width:70%"></i><i class="sk-line" style="width:45%"></i>
+        </div>
+        <h3>Share a post as an image</h3>
+        <p>Picture icon, <b>first in the post's top-right icons</b>. The image is on your clipboard.</p>
+      </div>
     </div>
-    <p style="margin-top:22px">Click the toolbar icon for the options, all off by default: <b>Like</b> or <b>Bookmark</b> a post when you copy or share it, and <b>Expand "Show more"</b>. A green check means it worked; a red ✕ shows why it didn't when you hover it.</p>
+    <div class="fb">
+      <span class="fb-item"><span class="fb-btn ok"><svg><use href="#i-check"/></svg></span>It worked</span>
+      <span class="fb-item"><span class="fb-btn err">✕</span>It didn't; hover the ✕ to see why</span>
+    </div>
+  </section>
+
+  <section class="feat flip" id="options">
+    <div class="text">
+      <p class="kicker">Options</p>
+      <h2>Three extras, all off until you want them</h2>
+      <p>Click the TweetPicker icon in Chrome's toolbar to open this panel. Changes apply at once.</p>
+    </div>
+    <div class="demo">
+      <div class="popup-mock">
+        <div class="pm-h">When copying or sharing</div>
+        <div class="pm-opt"><span class="pm-box"></span><div><b>Like</b><small>Also likes the post, using X's own button</small></div></div>
+        <div class="pm-opt"><span class="pm-box"></span><div><b>Bookmark</b><small>Also bookmarks it, so you can find it again</small></div></div>
+        <div class="pm-h">While browsing</div>
+        <div class="pm-opt"><span class="pm-box"></span><div><b>Expand "Show more"</b><small>Long posts open in place as you scroll</small></div></div>
+      </div>
+    </div>
   </section>
 
   <section class="block">
