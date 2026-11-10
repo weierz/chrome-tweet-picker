@@ -7,6 +7,26 @@
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const dark = () => matchMedia('(prefers-color-scheme: dark)').matches;
 
+  // ---------- hero: rotating word ----------
+  {
+    const words = $$('.rot > span');
+    if (!reduced && words.length) {
+      let i = 0;
+      const box = words[0].parentElement;
+      const fit = () => { box.style.width = words[i].offsetWidth + 'px'; };
+      fit(); addEventListener('resize', fit);
+      setInterval(() => {
+        if (document.hidden) return;
+        const cur = words[i], next = words[(i = (i + 1) % words.length)];
+        words.forEach((w) => w.classList.toggle('out', false));
+        next.style.transition = 'none'; next.classList.toggle('on', false); next.offsetWidth; next.style.transition = '';
+        cur.classList.replace('on', 'out');
+        next.classList.add('on');
+        fit();
+      }, 2200);
+    }
+  }
+
   // ---------- action rows ----------
   const ICON = {
     reply: '<path d="M4 12a8 8 0 0 1 8-8h1a7 7 0 0 1 0 14H9l-4 3v-4.5A8 8 0 0 1 4 12z"/>',

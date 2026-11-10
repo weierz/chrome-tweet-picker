@@ -23,7 +23,10 @@ header.top nav a:hover{color:var(--fg)}
 /* hero */
 .hero{text-align:center;padding:40px 0 8px}
 .hero h1{font-size:clamp(34px,6vw,56px);line-height:1.08;margin:0 0 16px;letter-spacing:-.03em}
-.hero h1 em{font-style:normal;color:var(--accent)}
+.rot{display:inline-grid;vertical-align:baseline;overflow:hidden;color:var(--accent);white-space:nowrap;padding-bottom:.12em;margin-bottom:-.12em;transition:width .5s cubic-bezier(.3,.9,.3,1)}
+.rot > span{grid-area:1/1;justify-self:start;transform:translateY(100%);opacity:0;transition:transform .5s cubic-bezier(.3,.9,.3,1),opacity .5s}
+.rot > span.on{transform:none;opacity:1}
+.rot > span.out{transform:translateY(-100%);opacity:0}
 .hero p.lead{font-size:19px;color:var(--muted);max-width:620px;margin:0 auto 26px}
 .btn{display:inline-block;background:var(--accent);color:var(--accent-fg);text-decoration:none;font-weight:700;padding:12px 24px;border-radius:999px}
 .btn.disabled{opacity:.6;cursor:default}
@@ -93,12 +96,6 @@ ul.ticks li::before{content:"";position:absolute;left:0;top:4px;width:18px;heigh
 .sk-pic{display:grid;place-items:center;color:var(--accent);background:rgba(29,155,240,.12);border-radius:50%;padding:4px;margin:-4px;animation:ping 2s ease-out infinite}
 .sk-line{display:block;height:8px;border-radius:4px;background:var(--x-line);margin:8px 0 0}
 @media (prefers-reduced-motion:reduce){.sk-btn,.sk-pic{animation:none}}
-.fb{display:flex;flex-wrap:wrap;gap:10px 28px;margin-top:18px;color:var(--muted);font-size:15px}
-.fb-item{display:flex;align-items:center;gap:8px}
-.fb-btn{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:12px;font-weight:700;flex:none}
-.fb-btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
-.fb-btn.ok{background:var(--ok)}
-.fb-btn.err{background:#f4212e}
 .popup-mock{background:var(--x-bg);border-radius:14px;box-shadow:var(--shadow);padding:16px;max-width:380px;margin:0 auto}
 .pm-h{font-weight:700;font-size:15px;margin:4px 0 10px}
 .pm-opt + .pm-h{margin-top:16px}
