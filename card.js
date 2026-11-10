@@ -23,7 +23,14 @@
   };
   const W = 600;      // card width (CSS px)
   const PAD = 24;
-  const SCALE = 2;    // output pixel density
+  // Output pixel density: 3x keeps text crisp when the image is zoomed or
+  // shown large; tall cards (long tweets, articles) use 2x so the PNG stays
+  // small enough to paste and upload (an article is ~4.5 MB at 2x, ~7 MB at 3x).
+  const SCALE = 3;
+  const TALL_SCALE = 2;
+  const TALL = 4000;           // CSS px
+  const MAX_SIDE = 65535;      // Chrome's largest canvas side
+  const MAX_AREA = 268435456;  // and largest canvas area
   const BLUE = '#1d9bf0';
 
   const wordSeg = new Intl.Segmenter(undefined, { granularity: 'word' });
@@ -635,9 +642,9 @@
     }
 
     y += PAD;
-    // A long article can be taller than a canvas may be (32767 px), so lower
-    // the density for those instead of failing.
-    const scale = Math.min(SCALE, 32767 / y);
+    // A very long article can be taller than a canvas may be, so lower the
+    // density for those instead of failing.
+    const scale = Math.min(y > TALL ? TALL_SCALE : SCALE, MAX_SIDE / y, Math.sqrt(MAX_AREA / (W * y)));
     const canvas = new OffscreenCanvas(Math.round(W * scale), Math.floor(y * scale));
     const ctx = canvas.getContext('2d');
     ctx.scale(scale, scale);
