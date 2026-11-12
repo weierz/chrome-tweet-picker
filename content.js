@@ -537,7 +537,13 @@
       await fullArticle(info.id);
       if (hasBody(models.get(info.id))) t = models.get(info.id);
     }
-    return finish(t || fromDom(article, info));
+    const model = finish(t || fromDom(article, info));
+    // X Money box: X's data only has the pay link, so read the payee off the
+    // page's card. card.js uses it only for a pay link (else the author).
+    const pay = article.querySelector('[data-testid="card.wrapper"]');
+    const payee = pay && /@(\w{1,15})/.exec(pay.innerText);
+    if (payee) model.moneyPayee = payee[1];
+    return model;
   }
 
   function largeUrl(url) {

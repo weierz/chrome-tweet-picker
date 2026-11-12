@@ -447,6 +447,45 @@
     return y + H;
   }
 
+  // ---------- X Money ----------
+  // A pay link (x.com/i/jf/cards/money/share?share_id=…). X shows it as a
+  // "Pay @handle with X Money" box; its link preview is only X's generic one.
+  const MONEY_URL = /https?:\/\/(?:x|twitter)\.com\/i\/jf\/cards\/money\/\S*/g;
+  const X_LOGO = 'M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z';
+
+  function moneyBlock(L, payee, x, y, w) {
+    const th = L.th;
+    const H = 84, R = 16;
+    const titleFont = `700 17px ${FONT}`, subFont = `400 15px ${FONT}`, btnFont = `700 16px ${FONT}`;
+    L.m.font = btnFont;
+    const bw = L.m.measureText('Pay').width + 40, bh = 40;
+    L.m.font = titleFont;
+    const title = fit(L.m, `Pay @${payee}`, w - 32 - bw - 16);
+    L.m.font = subFont;
+    const withW = L.m.measureText('with ').width;
+    L.ops.push((ctx) => {
+      ctx.fillStyle = th.fill;
+      ctx.beginPath(); ctx.roundRect(x, y, w, H, R); ctx.fill();
+      ctx.textBaseline = 'middle';
+      ctx.font = titleFont; ctx.fillStyle = th.text;
+      ctx.fillText(title, x + 16, y + 30);
+      ctx.font = subFont; ctx.fillStyle = th.muted;
+      ctx.fillText('with', x + 16, y + 56);
+      const lx = x + 16 + withW, ls = 14;
+      ctx.save(); ctx.translate(lx, y + 56 - ls / 2); ctx.scale(ls / 24, ls / 24);
+      ctx.fillStyle = th.text; ctx.fill(new Path2D(X_LOGO)); ctx.restore();
+      ctx.font = subFont; ctx.fillStyle = th.text;
+      ctx.fillText('Money', lx + ls + 4, y + 56);
+      const bx = x + w - 16 - bw, by = y + (H - bh) / 2;
+      ctx.fillStyle = th.text;
+      ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, bh / 2); ctx.fill();
+      ctx.font = btnFont; ctx.fillStyle = th.bg; ctx.textAlign = 'center';
+      ctx.fillText('Pay', bx + bw / 2, by + bh / 2);
+      ctx.textAlign = 'left';
+    });
+    return y + H;
+  }
+
   // ---------- X Articles ----------
   const ARTICLE_URL = /https?:\/\/(?:x|twitter)\.com\/i\/article\/\d+\S*/g;
 
@@ -547,7 +586,8 @@
     const ip = nested ? 12 : 14, inner = w - ip * 2;
     const size = nested ? 14 : 15, lineH = nested ? 20 : 21;
     let qy = userLine(L, q.user || {}, x + ip, top + ip, nested ? 20 : 22, size, true, inner);
-    const qText = q.article ? (q.text || '').replace(ARTICLE_URL, '').trim() : q.text;
+    let qText = q.article ? (q.text || '').replace(ARTICLE_URL, '').trim() : q.text;
+    if (qText) qText = qText.replace(MONEY_URL, '').trim();
     if (qText) qy = textBlock(L, qText, q.links, x + ip, qy + 6, inner, size, lineH, th.text);
     if (q.article) {
       // Quoted article: cover, title and preview, like X shows it.
@@ -604,7 +644,11 @@
     const art = model.article;
     let text = model.text || '';
     if (art) text = text.replace(ARTICLE_URL, '').trim();
-    const card = !art && model.card && !(model.media && model.media.length) ? model.card : null;
+    // An X Money pay link: draw the Pay box instead of the link and its preview.
+    const isMoney = (u) => !!u && new RegExp(MONEY_URL.source).test(u);
+    const money = isMoney(model.card && model.card.url) || isMoney(text);
+    if (money) text = text.replace(MONEY_URL, '').trim();
+    const card = !art && !money && model.card && !(model.media && model.media.length) ? model.card : null;
     let cardUrlAbove = !!(card && card.url && L.cardLink === 'above');
     if (card && card.url) {
       const t = text.trimEnd();
@@ -622,6 +666,7 @@
       if (cardUrlAbove) y = textBlock(L, card.url, [card.url], x, y + (text ? 6 : gap), w, 18, 26, th.text);
       y = linkCardBlock(L, card, x, y + sp(14), w);
     }
+    if (money) y = moneyBlock(L, model.moneyPayee || (model.user && model.user.handle) || '', x, y + sp(14), w);
     if (art) y = articleBlock(L, art, x, y + (text ? 18 : gap + 4), w);
     if (model.quote) y = quoteBlock(L, model.quote, x, y + sp(14), w, 1);
     return y;
