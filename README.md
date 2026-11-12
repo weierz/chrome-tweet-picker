@@ -2,7 +2,7 @@
 
 A Chrome extension (Manifest V3) for X / Twitter: copy photos, save videos, and share any post as a clean image.
 
-**Install:** [Chrome Web Store](https://chromewebstore.google.com/detail/tweetpicker/ppophefnhihljeoakdkcmfajgammnghf) · **Website:** [tweetpicker.weierz.com](https://tweetpicker.weierz.com/)
+**Install:** [Chrome Web Store](https://chromewebstore.google.com/detail/tweetpicker/ppophefnhihljeoakdkcmfajgammnghf) · **Website:** [tweetpicker.weierz.com](https://tweetpicker.weierz.com/) · **Release notes:** [CHANGELOG.md](CHANGELOG.md)
 
 ![Share any post as an image](store/screenshots/screenshot-1.png)
 
