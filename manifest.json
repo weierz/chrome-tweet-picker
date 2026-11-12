@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "TweetPicker",
+  "name": "Tweet Picker",
   "version": "1.0.0",
   "description": "On X/Twitter: copy images on hover, download videos, and share any tweet as an image.",
   "permissions": [
@@ -21,7 +21,7 @@
   },
   "action": {
     "default_popup": "options.html",
-    "default_title": "TweetPicker",
+    "default_title": "Tweet Picker",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",

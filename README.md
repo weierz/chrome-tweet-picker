@@ -1,4 +1,4 @@
-# TweetPicker
+# Tweet Picker
 
 A Chrome extension (Manifest V3) for X / Twitter: copy photos, save videos, and share any post as a clean image.
 
@@ -10,7 +10,7 @@ A Chrome extension (Manifest V3) for X / Twitter: copy photos, save videos, and 
 
 ### Share a post as an image
 
-Hover a post and click the picture icon at the start of its top-right icons (before Grok and `···`). TweetPicker copies a card of the post to your clipboard, drawn in your X theme:
+Hover a post and click the picture icon at the start of its top-right icons (before Grok and `···`). Tweet Picker copies a card of the post to your clipboard, drawn in your X theme:
 
 - the full text, with no "Show more" cut-off
 - every image, uncropped
@@ -18,7 +18,7 @@ Hover a post and click the picture icon at the start of its top-right icons (bef
 - X Articles in full: cover, title, headings, lists and images
 - counts, the date, and a footer with the post's `https://x.com/…` link
 
-On a post that's part of a thread (the author replying to themself), the same button copies the whole thread as one card: the author at the top, then every post in order on a line that joins them, each with its full text, images, quoted post and link preview. Replies from other people are left out. TweetPicker loads the parts of the thread the page hasn't shown yet from X's API, as the page does.
+On a post that's part of a thread (the author replying to themself), the same button copies the whole thread as one card: the author at the top, then every post in order on a line that joins them, each with its full text, images, quoted post and link preview. Replies from other people are left out. Tweet Picker loads the parts of the thread the page hasn't shown yet from X's API, as the page does.
 
 The page doesn't scroll or flash while the card is made. If you've pressed X's "Show translation", the card uses the translation and notes the original language; nothing is translated on its own.
 
@@ -80,7 +80,7 @@ Open x.com tabs pick up the extension, and later updates, without a refresh.
 
 ## Privacy
 
-TweetPicker only talks to X's own servers. No account, no analytics, nothing sent anywhere else. See [PRIVACY.md](PRIVACY.md).
+Tweet Picker only talks to X's own servers. No account, no analytics, nothing sent anywhere else. See [PRIVACY.md](PRIVACY.md).
 
 ## License
 

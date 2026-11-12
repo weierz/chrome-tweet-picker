@@ -197,7 +197,7 @@
     if (err) {
       btn.title = `Failed: ${err.message}`;
       setState(btn, 'err');
-      console.warn('[TweetPicker]', err);
+      console.warn('[Tweet Picker]', err);
     } else {
       btn.title = btn.getAttribute('aria-label');
       setState(btn, 'ok');

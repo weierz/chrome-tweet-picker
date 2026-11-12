@@ -1,4 +1,4 @@
-# Chrome Web Store — TweetPicker
+# Chrome Web Store — Tweet Picker
 
 Last updated: 2026-11-12
 
@@ -10,7 +10,7 @@ Last updated: 2026-11-12
 - Language: English (United States)
 - Single purpose: Help users copy, download, and share content from posts on X/Twitter.
 
-TweetPicker adds convenient tools to X and Twitter.
+Tweet Picker adds convenient tools to X and Twitter.
 
 • Copy photos: hover over a photo and click the copy button to copy the original-size image.
 • Download videos and GIFs: hover over a video or GIF and click download to save an available MP4.
@@ -25,7 +25,7 @@ Google ranks the store page on its title, summary and description, and the curre
 - Summary (132 max): Download Twitter/X videos and GIFs, copy full-size photos, and save any tweet as an image with full links. Free.
 - Description:
 
-TweetPicker is a free Chrome extension for X (Twitter). Hover a photo, a video or a post and a small button appears; move away and it's gone.
+Tweet Picker is a free Chrome extension for X (Twitter). Hover a photo, a video or a post and a small button appears; move away and it's gone.
 
 • Download Twitter / X videos and GIFs: click the button on any video to save the best-quality MP4.
 • Copy images from tweets: copy the original-size photo to your clipboard, also from the full-screen viewer.
@@ -34,7 +34,7 @@ TweetPicker is a free Chrome extension for X (Twitter). Hover a photo, a video o
 
 Optional, off by default: like or bookmark a post when you copy it, and expand long posts automatically.
 
-No account, no analytics, no developer server: TweetPicker only talks to X's own servers. Works on x.com and twitter.com.
+No account, no analytics, no developer server: Tweet Picker only talks to X's own servers. Works on x.com and twitter.com.
 Website: https://tweetpicker.weierz.com/
 
 ## Permissions
