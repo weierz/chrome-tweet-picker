@@ -15,6 +15,10 @@ When a post is part of a thread (the author replying to themself), the picture i
 
 The tooltip reads "Copy thread as image" on posts in a thread. On every other post the button works as before.
 
+### X Money pay links
+
+A post with an X Money pay link now shows a "Pay @handle with X Money" box, as X does. Before, the image showed the raw `x.com/i/jf/cards/money/…` link and X's generic link preview.
+
 ### Renamed to Tweet Picker
 
 The extension is now called **Tweet Picker**, with a space. The GitHub repository moved to [weierz/chrome-tweet-picker](https://github.com/weierz/chrome-tweet-picker); old links redirect.
