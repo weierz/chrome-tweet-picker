@@ -31,8 +31,9 @@ header.top nav a.gh svg{width:20px;height:20px}
 .rot > span.on{transform:none;opacity:1}
 .rot > span.out{transform:translateY(-100%);opacity:0}
 .hero p.lead{font-size:19px;color:var(--muted);max-width:620px;margin:0 auto 26px}
-.btn{display:inline-block;background:var(--accent);color:var(--accent-fg);text-decoration:none;font-weight:700;padding:12px 24px;border-radius:999px}
+.btn{display:inline-flex;align-items:center;gap:10px;background:var(--accent);color:var(--accent-fg);text-decoration:none;font-weight:700;padding:12px 24px;border-radius:999px}
 .btn.disabled{opacity:.6;cursor:default}
+.btn svg.chrome{width:22px;height:22px;flex:none;margin-left:-6px}
 .note{display:block;margin-top:10px;font-size:14px;color:var(--muted)}
 
 /* sections */
