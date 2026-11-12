@@ -539,11 +539,56 @@
     }
     const model = finish(t || fromDom(article, info));
     // X Money box: X's data only has the pay link, so read the payee off the
-    // page's card. card.js uses it only for a pay link (else the author).
-    const pay = article.querySelector('[data-testid="card.wrapper"]');
-    const payee = pay && /@(\w{1,15})/.exec(pay.innerText);
+    // page. X's box is a link to the payee's profile reading "Pay @handle
+    // with X Money". card.js uses it only for a pay link (else the author).
+    const payBox = [...article.querySelectorAll('a[href]')].find((el) =>
+      !el.closest('[data-testid="User-Name"], [data-testid="tweetText"], div[role="link"]') &&
+      /Money/.test(el.innerText) && /@\w{1,15}/.test(el.innerText));
+    const payee = payBox && /^\/(\w{1,15})$/.exec(new URL(payBox.href).pathname);
     if (payee) model.moneyPayee = payee[1];
+    const stocks = pageStocks(article);
+    if (stocks.length) model.stocks = stocks;
     return model;
+  }
+
+  // X's cashtag boxes ("$NVDA" -> logo, name, price, change, day chart). They
+  // aren't in the post's data, so read them off the page. Each box is a link
+  // holding the stock logo (abs.twimg.com/.../finance/.../stock/…) and a chart.
+  function pageStocks(article) {
+    const out = [];
+    const quoteBox = (el) => el.closest('div[role="link"]');
+    for (const img of article.querySelectorAll('img[src*="/finance/"][src*="/stock/"]')) {
+      const box = img.closest('a');
+      if (!box || quoteBox(box) || out.some((s) => s.box === box)) continue;
+      const lines = box.innerText.split('\n').map((l) => l.trim()).filter(Boolean);
+      const price = lines.find((l) => /^[^\d\s+−-]{0,3}[\d.,]+$/.test(l) && /\d/.test(l));
+      const change = lines.find((l) => /^[+−-][\d.,]+%$/.test(l));
+      const pi = lines.indexOf(price);
+      if (!price || pi < 2) continue;
+      const changeEl = [...box.querySelectorAll('*')].find((e) => [...e.childNodes].some((n) => n.nodeType === 3 && n.data.trim() === change));
+      const line = [...box.querySelectorAll('svg path')].find((p) => p.getAttribute('stroke') && p.getAttribute('stroke') !== 'none');
+      const vb = (line && line.ownerSVGElement.getAttribute('viewBox') || '').split(/\s+/).map(Number);
+      const platform = [...box.querySelectorAll('img')].find((i) => i !== img);
+      const footer = lines.slice(lines.indexOf(change) + 1).join(' ');
+      out.push({
+        box,
+        name: lines[pi - 2],
+        ticker: lines[pi - 1],
+        price,
+        change: change || '',
+        color: changeEl ? rgbHex(getComputedStyle(changeEl).color) : '',
+        logo: img.src,
+        chart: line && vb.length === 4 && vb[2] > 0 && vb[3] > 0 ? { d: line.getAttribute('d'), w: vb[2], h: vb[3] } : null,
+        footer: change ? footer : '',
+        footerLogo: change && footer && platform ? platform.src : '',
+      });
+    }
+    return out.map(({ box, ...s }) => s);
+  }
+
+  function rgbHex(c) {
+    const m = (c.match(/\d+/g) || []).slice(0, 3).map(Number);
+    return m.length === 3 ? '#' + m.map((n) => n.toString(16).padStart(2, '0')).join('') : '';
   }
 
   function largeUrl(url) {

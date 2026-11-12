@@ -55,7 +55,8 @@
   function linkRanges(text, links) {
     const ranges = [];
     let m;
-    const tag = /(^|[^\p{L}\p{N}_])([@#][\p{L}\p{N}_]+)/gu;
+    // @mentions, #hashtags and $cashtags ($NVDA; not "$5" or a lone "$").
+    const tag = /(^|[^\p{L}\p{N}_])([@#][\p{L}\p{N}_]+|\$[A-Za-z][A-Za-z0-9]{0,9}(?![\p{L}\p{N}_]))/gu;
     while ((m = tag.exec(text))) {
       const s = m.index + m[1].length;
       ranges.push([s, s + m[2].length]);
@@ -486,6 +487,82 @@
     return y + H;
   }
 
+  // ---------- cashtag stock boxes ----------
+  // X shows a box under a post that names a $cashtag: logo, name, symbol,
+  // price, change and a day chart, with a "Trade on …" footer. X's post data
+  // only has the symbol, so content.js reads each box off the page:
+  // { name, ticker, price, change, color, logo, chart: { d, w, h }, footer, footerLogo }
+  function stockBlock(L, st, x, y, w) {
+    const th = L.th;
+    const TOP = 80, FOOT = st.footer ? 32 : 0, H = TOP + FOOT, R = 16;
+    const color = st.color || th.muted;
+    const av = 48, ax = x + 16, ay = y + (TOP - av) / 2;
+    const tx = ax + av + 12;
+    const chartW = st.chart ? Math.round(w * 0.42) : 0;
+    const cx = x + w - chartW, textW = (st.chart ? cx - 12 : x + w - 16) - tx;
+    const nameFont = `700 17px ${FONT}`, lineFont = `400 15px ${FONT}`, priceFont = `700 15px ${FONT}`;
+    L.m.font = nameFont;
+    const name = fit(L.m, st.name || st.ticker || '', textW);
+    const parts = [[st.ticker, lineFont, th.muted], [st.price, priceFont, th.text], [st.change, lineFont, color]]
+      .filter((p) => p[0]);
+    let px = 0;
+    const placed = parts.map(([t, font, col]) => {
+      L.m.font = font;
+      const out = { t, font, col, x: px };
+      px += L.m.measureText(t).width + 6;
+      return out;
+    });
+    const logo = st.logo && L.imgs.get(st.logo);
+    const flogo = st.footerLogo && L.imgs.get(st.footerLogo);
+    L.m.font = `400 14px ${FONT}`;
+    const footW = st.footer ? L.m.measureText(st.footer).width + (flogo ? 22 : 0) : 0;
+    L.ops.push((ctx) => {
+      ctx.save();
+      ctx.beginPath(); ctx.roundRect(x, y, w, H, R); ctx.clip();
+      if (FOOT) { ctx.fillStyle = th.fill; ctx.fillRect(x, y + TOP, w, FOOT); }
+      if (st.chart && st.chart.d) {
+        // The page's own chart path, scaled into the box's right side.
+        const ch = TOP - 24, sy = y + 12;
+        ctx.save();
+        ctx.translate(cx, sy);
+        ctx.scale(chartW / st.chart.w, ch / st.chart.h);
+        const g = ctx.createLinearGradient(0, 0, 0, st.chart.h);
+        g.addColorStop(0, color + '40'); g.addColorStop(1, color + '00');
+        ctx.fillStyle = g;
+        ctx.fill(new Path2D(`${st.chart.d}L${st.chart.w},${st.chart.h}L0,${st.chart.h}Z`));
+        ctx.restore();
+        ctx.save();
+        ctx.translate(cx, sy);
+        ctx.scale(chartW / st.chart.w, ch / st.chart.h);
+        ctx.strokeStyle = color; ctx.lineWidth = 1.5 * st.chart.w / chartW; ctx.lineJoin = 'round';
+        ctx.stroke(new Path2D(st.chart.d));
+        ctx.restore();
+      }
+      ctx.restore();
+      ctx.strokeStyle = th.border; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(x + 0.5, y + 0.5, w - 1, H - 1, R); ctx.stroke();
+      drawAvatar(ctx, logo, ax, ay, av, th);
+      ctx.textBaseline = 'middle';
+      ctx.font = nameFont; ctx.fillStyle = th.text;
+      ctx.fillText(name, tx, y + TOP / 2 - 12);
+      for (const p of placed) {
+        if (p.x > textW) break;
+        ctx.font = p.font; ctx.fillStyle = p.col;
+        ctx.fillText(p.t, tx + p.x, y + TOP / 2 + 13);
+      }
+      if (FOOT) {
+        const fx = x + (w - footW) / 2, fy = y + TOP + FOOT / 2;
+        ctx.font = `400 14px ${FONT}`; ctx.fillStyle = th.muted;
+        ctx.fillText(st.footer, fx, fy);
+        if (flogo) {
+          ctx.save(); ctx.beginPath(); ctx.roundRect(fx + footW - 16, fy - 8, 16, 16, 4); ctx.clip();
+          ctx.drawImage(flogo, fx + footW - 16, fy - 8, 16, 16); ctx.restore();
+        }
+      }
+    });
+    return y + H;
+  }
+
   // ---------- X Articles ----------
   const ARTICLE_URL = /https?:\/\/(?:x|twitter)\.com\/i\/article\/\d+\S*/g;
 
@@ -617,6 +694,10 @@
       if (t.user && t.user.avatar) urls.add(avatarUrl(t.user.avatar));
       for (const m of t.media || []) if (m.url) urls.add(m.url);
       if (t.card && t.card.image && t.card.image.url) urls.add(t.card.image.url);
+      for (const st of t.stocks || []) {
+        if (st.logo) urls.add(st.logo);
+        if (st.footerLogo) urls.add(st.footerLogo);
+      }
       const a = t.article;
       if (a && a.cover) urls.add(a.cover.url);
       if (a && t === model) {
@@ -666,6 +747,7 @@
       if (cardUrlAbove) y = textBlock(L, card.url, [card.url], x, y + (text ? 6 : gap), w, 18, 26, th.text);
       y = linkCardBlock(L, card, x, y + sp(14), w);
     }
+    for (const st of model.stocks || []) y = stockBlock(L, st, x, y + sp(14), w);
     if (money) y = moneyBlock(L, model.moneyPayee || (model.user && model.user.handle) || '', x, y + sp(14), w);
     if (art) y = articleBlock(L, art, x, y + (text ? 18 : gap + 4), w);
     if (model.quote) y = quoteBlock(L, model.quote, x, y + sp(14), w, 1);
