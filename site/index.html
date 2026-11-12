@@ -3,9 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TweetPicker — copy, download and share from X</title>
-<meta name="description" content="TweetPicker is a Chrome extension for X/Twitter: buttons that appear only on hover to copy photos, download videos and share any post as a complete image card with full links and the original post URL.">
+<title>TweetPicker: download Twitter/X videos, copy images, save tweets as images</title>
+<meta name="description" content="Free Chrome extension for X (Twitter): download videos and GIFs as MP4, copy original-size photos, and save any tweet as an image with full links and the post URL. No account, no analytics.">
+<link rel="canonical" href="https://tweetpicker.weierz.com/">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/icon-128.png" type="image/png" sizes="128x128">
+<link rel="apple-touch-icon" href="/icon-128.png">
+<link rel="chrome-webstore-item" href="https://chromewebstore.google.com/detail/tweetpicker/ppophefnhihljeoakdkcmfajgammnghf">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="TweetPicker">
+<meta property="og:url" content="https://tweetpicker.weierz.com/">
+<meta property="og:title" content="TweetPicker: download Twitter/X videos, copy images, save tweets as images">
+<meta property="og:description" content="Free Chrome extension for X (Twitter). Hover a photo, video or post: copy it, save it, or turn the whole tweet into one image.">
+<meta property="og:image" content="https://tweetpicker.weierz.com/og.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="800">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@graph":[
+ {"@type":"SoftwareApplication","name":"TweetPicker","applicationCategory":"BrowserApplication","applicationSubCategory":"Chrome extension","operatingSystem":"Chrome","url":"https://tweetpicker.weierz.com/","downloadUrl":"https://chromewebstore.google.com/detail/tweetpicker/ppophefnhihljeoakdkcmfajgammnghf","installUrl":"https://chromewebstore.google.com/detail/tweetpicker/ppophefnhihljeoakdkcmfajgammnghf","image":"https://tweetpicker.weierz.com/og.png","description":"Chrome extension for X (Twitter): download videos and GIFs, copy original-size photos, and save any tweet as an image with full links and the original post URL.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"sameAs":["https://chromewebstore.google.com/detail/tweetpicker/ppophefnhihljeoakdkcmfajgammnghf","https://github.com/weierz/chrome-tweeter-picker"]},
+ {"@type":"WebSite","name":"TweetPicker","url":"https://tweetpicker.weierz.com/"}
+]}
+</script>
 <link rel="stylesheet" href="/style.css?v=dev">
 </head>
 <body>
@@ -24,14 +43,14 @@
 <div class="wrap">
   <header class="top">
     <a class="brand" href="/"><img src="/icon.svg" alt="">TweetPicker</a>
-    <nav><a class="wide" href="#features">Features</a><a href="#how">How to use</a><a href="/privacy/">Privacy</a><a class="gh" href="https://github.com/weierz/chrome-tweeter-picker" aria-label="TweetPicker on GitHub" title="GitHub"><svg><use href="#i-gh"/></svg></a></nav>
+    <nav><a class="wide" href="#features">Features</a><a href="#how">How to use</a><a href="/privacy/">Privacy</a><a class="wide" href="https://chromewebstore.google.com/detail/tweetpicker/ppophefnhihljeoakdkcmfajgammnghf">Install</a><a class="gh" href="https://github.com/weierz/chrome-tweeter-picker" aria-label="TweetPicker on GitHub" title="GitHub"><svg><use href="#i-gh"/></svg></a></nav>
   </header>
 
   <section class="hero">
     <h1 aria-label="Pick posts, images and videos from X in a simple way">Pick <span class="rot" aria-hidden="true"><span class="on">posts</span><span>images</span><span>videos</span></span> from X<br>in a simple way</h1>
     <p class="lead">Copy photos, save videos, and turn any post into one complete image, with its quotes, previews, full links and the original post URL. The buttons only show up when you hover.</p>
-    <span class="btn disabled" aria-disabled="true">Chrome Web Store — coming soon</span>
-    <span class="note">Free. No account, no analytics, no developer server.</span>
+    <a class="btn" href="https://chromewebstore.google.com/detail/tweetpicker/ppophefnhihljeoakdkcmfajgammnghf">Add to Chrome, it's free</a>
+    <span class="note">Works on x.com and twitter.com. No account, no analytics, no developer server.</span>
   </section>
 
   <!-- hero demo: share a post as an image -->
@@ -245,6 +264,21 @@
     </div>
   </section>
 
+  <section class="block faq" id="faq">
+    <p class="kicker">Questions</p>
+    <h2>Frequently asked</h2>
+    <h3>How do I download a video from Twitter / X?</h3>
+    <p>Install TweetPicker, open the post on x.com and hover the video or GIF. Click the download button in its top-right corner and the best-quality MP4 is saved to your Downloads folder.</p>
+    <h3>How do I save a tweet as an image?</h3>
+    <p>Hover the post and click the picture icon, first among the icons at its top right. TweetPicker draws the whole tweet, including long text, every photo, quoted posts and link previews, as one image and copies it to your clipboard, ready to paste into a chat, document or slide.</p>
+    <h3>How do I copy an image from a tweet?</h3>
+    <p>Hover the photo and click the copy button in its corner. You get the original-size image on your clipboard, also from X's full-screen photo viewer.</p>
+    <h3>Is TweetPicker free? Does it need my X password?</h3>
+    <p>It's free, with no account and no sign-in of its own. It works inside the X page you already have open and only talks to X's own servers.</p>
+    <h3>Does it work on twitter.com as well as x.com?</h3>
+    <p>Yes, on both, in light, dim and dark themes. It runs in Google Chrome and other Chromium browsers that install from the <a href="https://chromewebstore.google.com/detail/tweetpicker/ppophefnhihljeoakdkcmfajgammnghf">Chrome Web Store</a>.</p>
+  </section>
+
   <section class="block">
     <p class="kicker">Privacy</p>
     <h2>Stays in your browser</h2>
@@ -256,6 +290,7 @@
     <a href="/privacy/">Privacy policy</a>
     <a href="mailto:will.b.chang@gmail.com">Contact</a>
     <a href="https://github.com/weierz/chrome-tweeter-picker">GitHub</a>
+    <a href="https://chromewebstore.google.com/detail/tweetpicker/ppophefnhihljeoakdkcmfajgammnghf">Chrome Web Store</a>
     <span>Not affiliated with X Corp. Accounts and posts shown are made up.</span>
   </footer>
 </div>
