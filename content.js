@@ -26,9 +26,10 @@
   const hasBody = (t) => !!(t && t.article && t.article.blocks);
   window.addEventListener('message', (e) => {
     if (retired || e.source !== window || !e.data) return;
-    if (e.data.__tws === 'articleDone') {
-      const waits = articleWaits.get(e.data.id) || [];
-      articleWaits.delete(e.data.id);
+    if (e.data.__tws === 'articleDone' || e.data.__tws === 'detailDone') {
+      const key = `${e.data.__tws}:${e.data.id}`;
+      const waits = pageWaits.get(key) || [];
+      pageWaits.delete(key);
       for (const w of waits) w(e.data.ok);
       return;
     }
@@ -42,21 +43,29 @@
       else if (old && hasBody(v) && !hasBody(old)) models.set(k, { ...old, article: v.article });
       else models.set(k, v);
     }
+    schedule();
   });
 
-  // Ask inject.js (page world) to load an article's full body from X's API.
-  const articleWaits = new Map(); // tweet id -> [resolve]
-  function fullArticle(id) {
+  // Ask inject.js (page world) to load something from X's API; resolves once
+  // its result has been scanned into `models` (true) or the request failed.
+  const pageWaits = new Map(); // 'articleDone:<id>' -> [resolve]
+  function askPage(type, done, id) {
     return new Promise((resolve) => {
-      const waits = articleWaits.get(id) || [];
+      const key = `${done}:${id}`;
+      const waits = pageWaits.get(key) || [];
       waits.push(resolve);
-      articleWaits.set(id, waits);
-      if (waits.length === 1) window.postMessage({ __tws: 'getArticle', id }, location.origin);
+      pageWaits.set(key, waits);
+      if (waits.length === 1) window.postMessage({ __tws: type, id }, location.origin);
       setTimeout(() => resolve(false), 10000);
     });
   }
+  // An article's full body.
+  const fullArticle = (id) => askPage('getArticle', 'articleDone', id);
+  // A post's conversation: the posts above it and the replies below.
+  const conversation = (id) => askPage('getDetail', 'detailDone', id);
 
   const SHARE_LABEL = 'Copy tweet as image';
+  const THREAD_LABEL = 'Copy thread as image';
 
   // ---------- settings (toolbar popup, options.html) ----------
   const settings = { autoLike: false, autoBookmark: false, autoExpand: false };
@@ -247,6 +256,11 @@
         const icon = found.caret.querySelector('svg');
         if (icon) btn.style.setProperty('--tws-icon', getComputedStyle(icon).color);
       }
+      const label = inThread(tweetInfo(article).id) ? THREAD_LABEL : SHARE_LABEL;
+      if (btn.getAttribute('aria-label') !== label) {
+        btn.setAttribute('aria-label', label);
+        if (!btn.__twsWorking && !btn.classList.contains('tws-err')) btn.title = label;
+      }
       // Grok's wrapper brings its own 8px gap; next to "···" alone we add it.
       btn.classList.toggle('tws-gap', !found.shared);
       if (found.stack.firstElementChild !== btn) found.stack.prepend(btn);
@@ -411,6 +425,9 @@
       lang: d.lang,
       user: { name: u.name, handle: u.screen_name, avatar: u.profile_image_url_https, verified: !!(u.is_blue_verified || u.verified) },
       createdAt: d.created_at,
+      replyTo: d.in_reply_to_status_id_str || null,
+      replyToUser: d.in_reply_to_screen_name || null,
+      selfThread: (d.self_thread && d.self_thread.id_str) || null,
       text: body.text,
       links: body.links,
       media,
@@ -586,15 +603,89 @@
     return TwsCard.render(model, { theme: pageTheme(), loadImage });
   }
 
+  // ---------- threads ----------
+  // A thread is the author's chain of replies to themself. Starting from the
+  // clicked post: climb to the post it answers while that's by the same author,
+  // then follow the author's own reply below each post.
+  const sameUser = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
+  const handleOf = (t) => (t && t.user && t.user.handle) || '';
+  const byId = (a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1);
+
+  function selfReply(t) {
+    let best = null;
+    for (const c of models.values()) {
+      if (c.replyTo === t.id && sameUser(handleOf(c), handleOf(t)) && (!best || byId(c, best) < 0)) best = c;
+    }
+    return best;
+  }
+
+  function chainOf(id) {
+    const start = models.get(id);
+    if (!start) return [];
+    const up = [];
+    for (let t = start; t && up.length < 500;) {
+      up.unshift(t);
+      if (!t.replyTo || !sameUser(t.replyToUser, handleOf(t))) break;
+      t = models.get(t.replyTo);
+    }
+    const chain = up;
+    for (let t = selfReply(start); t && chain.length < 500 && !chain.includes(t); t = selfReply(t)) chain.push(t);
+    return chain;
+  }
+
+  // Is this post (as far as we know) part of a thread?
+  function inThread(id) {
+    const t = models.get(id);
+    if (!t) return false;
+    if (t.replyTo && sameUser(t.replyToUser, handleOf(t))) return true;
+    if (t.selfThread) return true;
+    return !!selfReply(t);
+  }
+
+  // Load what's missing at either end: the start (the post the first one
+  // answers) and the rest (each request returns the author's next replies).
+  async function loadThread(id) {
+    const asked = new Set();
+    let chain = chainOf(id);
+    for (let i = 0; i < 40; i++) {
+      const head = chain[0], tail = chain[chain.length - 1];
+      let next = null;
+      if (head && head.replyTo && sameUser(head.replyToUser, handleOf(head)) && !asked.has(head.id)) next = head.id;
+      else if (tail && !asked.has(tail.id)) next = tail.id;
+      if (!next) break;
+      asked.add(next);
+      const ok = await conversation(next);
+      if (!ok && next === id) break; // the API isn't available; use what we have
+      chain = chainOf(id);
+    }
+    return chain;
+  }
+
+  async function renderThread(article) {
+    const info = tweetInfo(article);
+    const chain = await loadThread(info.id);
+    if (chain.length < 2) return renderTweet(article);
+    const posts = await Promise.all(chain.map(async (t) => {
+      if (t.article && !hasBody(t)) {
+        await fullArticle(t.id);
+        if (hasBody(models.get(t.id))) t = models.get(t.id);
+      }
+      return finish(t);
+    }));
+    return TwsCard.renderThread(posts, { theme: pageTheme(), loadImage });
+  }
+
   let rendering = false;
   function shareTweet(btn) {
     const article = btn.closest('article');
     if (!article || rendering) return;
 
     rendering = true;
+    const thread = inThread(tweetInfo(article).id);
     work(btn, async () => {
       // Pass the pending render as a promise so the write keeps the click's user activation.
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': renderTweet(article) })]);
+      const png = thread ? renderThread(article) : renderTweet(article);
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
       engage(article);
     }).finally(() => { rendering = false; });
   }

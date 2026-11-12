@@ -127,6 +127,10 @@
       lang: l.lang,
       user: userOf(o.core && o.core.user_results),
       createdAt: l.created_at,
+      // Thread links: the post this one answers, and the thread it starts or continues.
+      replyTo: l.in_reply_to_status_id_str || null,
+      replyToUser: l.in_reply_to_screen_name || null,
+      selfThread: (l.self_thread && l.self_thread.id_str) || null,
       text: body.text,
       links: body.links,
       media: mediaList.map((m) => ({
@@ -207,6 +211,7 @@
       // Reuse the feature flags of a request that loads tweets (others lack
       // the article ones), preferring the very query used below.
       const f = u.searchParams.get('features');
+      if (f) (state.opFeatures || (state.opFeatures = {}))[m[2]] = f;
       if (f && f.includes('article_tweet_consumption') && (m[2] === 'TweetResultByRestId' || !state.exactFeatures)) {
         state.features = f;
         state.exactFeatures = m[2] === 'TweetResultByRestId';
@@ -224,20 +229,22 @@
     return m && m[1];
   }
 
-  async function fetchArticle(tweetId) {
-    const qid = await queryId('TweetResultByRestId');
+  // GET one of X's GraphQL queries with the page's own session, and scan the result.
+  async function query(op, variables, fieldToggles) {
+    const qid = await queryId(op);
     const ct0 = (/(?:^|;\s*)ct0=([^;]+)/.exec(document.cookie) || [])[1];
-    if (!qid || !state.features || !ct0) throw new Error('X API not available');
+    const features = (state.opFeatures && state.opFeatures[op]) || state.features;
+    if (!qid || !features || !ct0) throw new Error('X API not available');
     const params = new URLSearchParams({
-      variables: JSON.stringify({ tweetId, withCommunity: false, includePromotedContent: false, withVoice: false }),
+      variables: JSON.stringify(variables),
       features: JSON.stringify({
-        ...JSON.parse(state.features),
+        ...JSON.parse(features),
         responsive_web_twitter_article_tweet_consumption_enabled: true,
         articles_preview_enabled: true,
       }),
-      fieldToggles: JSON.stringify({ withArticleRichContentState: true, withArticlePlainText: false }),
+      fieldToggles: JSON.stringify(fieldToggles),
     });
-    const res = await (state.fetch || window.fetch).call(window, `/i/api/graphql/${qid}/TweetResultByRestId?${params}`, {
+    const res = await (state.fetch || window.fetch).call(window, `/i/api/graphql/${qid}/${op}?${params}`, {
       credentials: 'include',
       headers: {
         authorization: state.auth || BEARER,
@@ -251,8 +258,20 @@
     window.__twsScan(await res.json());
   }
 
+  const fetchArticle = (tweetId) => query('TweetResultByRestId',
+    { tweetId, withCommunity: false, includePromotedContent: false, withVoice: false },
+    { withArticleRichContentState: true, withArticlePlainText: false });
+
+  // A post's conversation as its page loads it: every post above it, and the
+  // replies below (the author's own continuation first).
+  const fetchDetail = (focalTweetId) => query('TweetDetail', {
+    focalTweetId, with_rux_injections: false, rankingMode: 'Relevance', includePromotedContent: false,
+    withCommunity: true, withQuickPromoteEligibilityTweetFields: false, withBirdwatchNotes: true, withVoice: true,
+  }, { withArticleRichContentState: true, withArticlePlainText: false, withGrokAnalyze: false, withDisallowedReplyControls: false });
+
   window.__twsScan = scan;
   window.__twsArticle = fetchArticle;
+  window.__twsDetail = fetchDetail;
   if (window.__twsHooks) return;
   window.__twsHooks = true;
   window.__twsInjected = true;
@@ -262,6 +281,12 @@
     const id = String(e.data.id);
     const reply = (ok) => window.postMessage({ __tws: 'articleDone', id, ok }, location.origin);
     window.__twsArticle(id).then(() => reply(true), () => reply(false));
+  });
+  window.addEventListener('message', (e) => {
+    if (e.source !== window || !e.data || e.data.__tws !== 'getDetail') return;
+    const id = String(e.data.id);
+    const reply = (ok, error) => window.postMessage({ __tws: 'detailDone', id, ok, error }, location.origin);
+    window.__twsDetail(id).then(() => reply(true), (err) => reply(false, String(err && err.message || err)));
   });
 
   // XHR

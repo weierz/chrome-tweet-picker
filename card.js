@@ -588,24 +588,24 @@
     return [...urls];
   }
 
-  async function render(model, { theme = 'light', loadImage, cardLink = 'above' }) {
-    const th = THEMES[theme] || THEMES.light;
-
-    // Load every image first so the layout knows real aspect ratios.
+  // Load every image first so the layout knows real aspect ratios.
+  async function loadAll(urls, loadImage) {
     const imgs = new Map();
-    await Promise.all(imageUrls(model).map(async (u) => {
+    await Promise.all(urls.map(async (u) => {
       try { const b = await loadImage(u); if (b) imgs.set(u, b); } catch (_) {}
     }));
+    return imgs;
+  }
 
-    const L = { m: new OffscreenCanvas(1, 1).getContext('2d'), ops: [], th, imgs, cardLink };
-    const innerW = W - PAD * 2;
-    let y = PAD;
-
+  // A post's body below its author line: text, media, link preview, article
+  // and quoted post. `gap` is the space above the first piece.
+  function postBody(L, model, x, y, w, gap) {
+    const th = L.th;
     const art = model.article;
     let text = model.text || '';
     if (art) text = text.replace(ARTICLE_URL, '').trim();
     const card = !art && model.card && !(model.media && model.media.length) ? model.card : null;
-    let cardUrlAbove = !!(card && card.url && cardLink === 'above');
+    let cardUrlAbove = !!(card && card.url && L.cardLink === 'above');
     if (card && card.url) {
       const t = text.trimEnd();
       if (t.endsWith(card.url)) text = t.slice(0, -card.url.length).trimEnd();
@@ -613,18 +613,91 @@
     }
     L.cardUrlShown = cardUrlAbove || !!(card && card.url && text.includes(card.url));
 
-    y = userLine(L, model.user || {}, PAD, y, 48, 17, false, innerW, formatDate(model.createdAt));
-    if (text) y = textBlock(L, text, model.links, PAD, y + 12, innerW, 18, 26, th.text);
-    if (text && model.translatedFrom) y = translatedNote(L, model.translatedFrom, PAD, y + 4, 14);
-    if (model.media && model.media.length) y = mediaBlock(L, model.media, PAD, y + 14, innerW, innerW * 1.2, 16);
+    const start = y;
+    const sp = (n) => (y === start && !gap ? 0 : n); // gap 0: nothing above the first piece
+    if (text) y = textBlock(L, text, model.links, x, y + gap, w, 18, 26, th.text);
+    if (text && model.translatedFrom) y = translatedNote(L, model.translatedFrom, x, y + 4, 14);
+    if (model.media && model.media.length) y = mediaBlock(L, model.media, x, y + sp(14), w, w * 1.2, 16);
     if (card) {
-      if (cardUrlAbove) y = textBlock(L, card.url, [card.url], PAD, y + (text ? 6 : 12), innerW, 18, 26, th.text);
-      y = linkCardBlock(L, card, PAD, y + 14, innerW);
+      if (cardUrlAbove) y = textBlock(L, card.url, [card.url], x, y + (text ? 6 : gap), w, 18, 26, th.text);
+      y = linkCardBlock(L, card, x, y + sp(14), w);
     }
+    if (art) y = articleBlock(L, art, x, y + (text ? 18 : gap + 4), w);
+    if (model.quote) y = quoteBlock(L, model.quote, x, y + sp(14), w, 1);
+    return y;
+  }
 
-    if (art) y = articleBlock(L, art, PAD, y + (text ? 18 : 16), innerW);
+  // Draw the laid-out ops onto a canvas of height y and return the PNG.
+  function paint(L, y, imgs) {
+    // A very long card can be taller than a canvas may be, so lower the
+    // density for those instead of failing.
+    const scale = Math.min(SCALE, MAX_SIDE / y, Math.sqrt(MAX_AREA / (W * y)));
+    const canvas = new OffscreenCanvas(Math.round(W * scale), Math.floor(y * scale));
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+    ctx.fillStyle = L.th.bg;
+    ctx.fillRect(0, 0, W, y);
+    for (const op of L.ops) op(ctx);
+    for (const b of imgs.values()) b.close && b.close();
+    return canvas.convertToBlob({ type: 'image/png' });
+  }
 
-    if (model.quote) y = quoteBlock(L, model.quote, PAD, y + 14, innerW, 1);
+  // A whole thread as one card: the author once at the top, then every post
+  // in order on a line that joins them, then the first post's link.
+  async function renderThread(posts, { theme = 'light', loadImage, cardLink = 'above' }) {
+    const th = THEMES[theme] || THEMES.light;
+    const first = posts[0];
+    const urls = new Set();
+    for (const p of posts) for (const u of imageUrls(p)) urls.add(u);
+    const imgs = await loadAll([...urls], loadImage);
+    const L = { m: new OffscreenCanvas(1, 1).getContext('2d'), ops: [], th, imgs, cardLink };
+    const innerW = W - PAD * 2;
+
+    let y = userLine(L, first.user || {}, PAD, PAD, 48, 17, false, innerW, formatDate(first.createdAt));
+    // Thread line: a dot per post in a narrow gutter under the avatar's centre.
+    const GUT = 24, lineX = PAD + 5, bx = PAD + GUT, bw = innerW - GUT;
+    const dots = [];
+    y += 6;
+    posts.forEach((p, i) => {
+      const top = y + (i ? 22 : 12);
+      dots.push(top + 13);
+      y = postBody(L, p, bx, top, bw, 0);
+      if (y === top) y += 26; // a post with nothing we can draw still gets its dot
+    });
+    const firstDot = dots[0], lastDot = dots[dots.length - 1];
+    L.ops.unshift((ctx) => {
+      ctx.fillStyle = th.border;
+      ctx.fillRect(lineX - 1, firstDot, 2, lastDot - firstDot);
+    });
+    L.ops.push((ctx) => {
+      for (const d of dots) {
+        ctx.fillStyle = th.bg;
+        ctx.beginPath(); ctx.arc(lineX, d, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = th.muted;
+        ctx.beginPath(); ctx.arc(lineX, d, 4, 0, Math.PI * 2); ctx.fill();
+      }
+    });
+
+    y = footerBlock(L, first, PAD, y + 6, innerW);
+    const n = posts.length;
+    L.ops.push(((fy) => (ctx) => {
+      ctx.font = `400 14px ${FONT}`; ctx.fillStyle = th.muted; ctx.textBaseline = 'middle';
+      ctx.fillText(`Thread · ${n} posts`, PAD, fy + 10);
+    })(y + 4));
+    y += 24 + PAD;
+    return paint(L, y, imgs);
+  }
+
+  async function render(model, { theme = 'light', loadImage, cardLink = 'above' }) {
+    const th = THEMES[theme] || THEMES.light;
+    const imgs = await loadAll(imageUrls(model), loadImage);
+
+    const L = { m: new OffscreenCanvas(1, 1).getContext('2d'), ops: [], th, imgs, cardLink };
+    const innerW = W - PAD * 2;
+    let y = PAD;
+
+    y = userLine(L, model.user || {}, PAD, y, 48, 17, false, innerW, formatDate(model.createdAt));
+    y = postBody(L, model, PAD, y, innerW, 12);
 
     y = footerBlock(L, model, PAD, y, innerW);
 
@@ -639,17 +712,7 @@
     }
 
     y += PAD;
-    // A very long article can be taller than a canvas may be, so lower the
-    // density for those instead of failing.
-    const scale = Math.min(SCALE,MAX_SIDE / y, Math.sqrt(MAX_AREA / (W * y)));
-    const canvas = new OffscreenCanvas(Math.round(W * scale), Math.floor(y * scale));
-    const ctx = canvas.getContext('2d');
-    ctx.scale(scale, scale);
-    ctx.fillStyle = th.bg;
-    ctx.fillRect(0, 0, W, y);
-    for (const op of L.ops) op(ctx);
-    for (const b of imgs.values()) b.close && b.close();
-    return canvas.convertToBlob({ type: 'image/png' });
+    return paint(L, y, imgs);
   }
 
   // X link-preview card -> { url, large, title, domain, description, image }.
@@ -679,5 +742,5 @@
     };
   }
 
-  globalThis.TwsCard = { render, imageUrls, cleanText, avatarUrl, cardOf };
+  globalThis.TwsCard = { render, renderThread, imageUrls, cleanText, avatarUrl, cardOf };
 })();

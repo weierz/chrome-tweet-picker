@@ -18,6 +18,8 @@ Hover a post and click the picture icon at the start of its top-right icons (bef
 - X Articles in full: cover, title, headings, lists and images
 - counts, the date, and a footer with the post's `https://x.com/…` link
 
+On a post that's part of a thread (the author replying to themself), the same button copies the whole thread as one card: the author at the top, then every post in order on a line that joins them, each with its full text, images, quoted post and link preview. Replies from other people are left out. TweetPicker loads the parts of the thread the page hasn't shown yet from X's API, as the page does.
+
 The page doesn't scroll or flash while the card is made. If you've pressed X's "Show translation", the card uses the translation and notes the original language; nothing is translated on its own.
 
 ### Copy photos
@@ -58,7 +60,7 @@ Open x.com tabs pick up the extension, and later updates, without a refresh.
 
 | File | Role |
 | --- | --- |
-| `inject.js` | Runs in the page. Reads X's own API responses for each post's full data and video MP4 URLs. For X Articles, which timelines only preview, it loads the full body from X's API (`TweetResultByRestId`) with your signed-in session, as the page does. |
+| `inject.js` | Runs in the page. Reads X's own API responses for each post's full data and video MP4 URLs. For X Articles, which timelines only preview, it loads the full body from X's API (`TweetResultByRestId`) with your signed-in session, as the page does; for threads, the rest of the conversation (`TweetDetail`). |
 | `card.js` | Draws the share card on a canvas. Without X's data for a post it falls back to the public embed endpoint, then to the visible page. |
 | `content.js` | Adds the hover buttons and handles the clipboard. X's selectors live at the top of `decorate()`; update them when X changes its markup. |
 | `background.js` | Fetches images cross-origin, starts downloads, and falls back to `cdn.syndication.twimg.com` for video URLs it hasn't seen. |
