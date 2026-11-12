@@ -22,7 +22,7 @@ A post with an X Money pay link now shows a "Pay @handle with X Money" box, as X
 ### Stocks
 
 - `$cashtags` such as `$NVDA` are now blue, like @mentions and #hashtags.
-- X's stock box under a post that names one is now in the image: the company logo, name, symbol, price, the day's change in green or red, the day's chart, and the "Trade on …" line. X builds this box on the page from live market data, so the image shows the numbers as they were on your screen when you copied it.
+- X's stock box under a post that names one is now in the image: the company logo, name, symbol, price, the day's change in green or red, and the day's chart. X builds this box on the page from live market data, so the image shows the numbers as they were on your screen when you copied it.
 
 ### Renamed to Tweet Picker
 

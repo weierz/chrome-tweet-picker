@@ -551,9 +551,10 @@
     return model;
   }
 
-  // X's cashtag boxes ("$NVDA" -> logo, name, price, change, day chart). They
-  // aren't in the post's data, so read them off the page. Each box is a link
-  // holding the stock logo (abs.twimg.com/.../finance/.../stock/…) and a chart.
+  // X's cashtag boxes ("$NVDA" -> logo, name, price, change, day chart; its
+  // "Trade on …" row is left out). They aren't in the post's data, so read
+  // them off the page. Each box is a link holding the stock logo
+  // (abs.twimg.com/.../finance/.../stock/…) and a chart.
   function pageStocks(article) {
     const out = [];
     const quoteBox = (el) => el.closest('div[role="link"]');
@@ -568,8 +569,6 @@
       const changeEl = [...box.querySelectorAll('*')].find((e) => [...e.childNodes].some((n) => n.nodeType === 3 && n.data.trim() === change));
       const line = [...box.querySelectorAll('svg path')].find((p) => p.getAttribute('stroke') && p.getAttribute('stroke') !== 'none');
       const vb = (line && line.ownerSVGElement.getAttribute('viewBox') || '').split(/\s+/).map(Number);
-      const platform = [...box.querySelectorAll('img')].find((i) => i !== img);
-      const footer = lines.slice(lines.indexOf(change) + 1).join(' ');
       out.push({
         box,
         name: lines[pi - 2],
@@ -579,8 +578,6 @@
         color: changeEl ? rgbHex(getComputedStyle(changeEl).color) : '',
         logo: img.src,
         chart: line && vb.length === 4 && vb[2] > 0 && vb[3] > 0 ? { d: line.getAttribute('d'), w: vb[2], h: vb[3] } : null,
-        footer: change ? footer : '',
-        footerLogo: change && footer && platform ? platform.src : '',
       });
     }
     return out.map(({ box, ...s }) => s);

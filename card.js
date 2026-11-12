@@ -489,12 +489,12 @@
 
   // ---------- cashtag stock boxes ----------
   // X shows a box under a post that names a $cashtag: logo, name, symbol,
-  // price, change and a day chart, with a "Trade on …" footer. X's post data
-  // only has the symbol, so content.js reads each box off the page:
-  // { name, ticker, price, change, color, logo, chart: { d, w, h }, footer, footerLogo }
+  // price, change and a day chart (its "Trade on …" ad row is left out).
+  // X's post data only has the symbol, so content.js reads each box off the page:
+  // { name, ticker, price, change, color, logo, chart: { d, w, h } }
   function stockBlock(L, st, x, y, w) {
     const th = L.th;
-    const TOP = 80, FOOT = st.footer ? 32 : 0, H = TOP + FOOT, R = 16;
+    const TOP = 80, H = TOP, R = 16;
     const color = st.color || th.muted;
     const av = 48, ax = x + 16, ay = y + (TOP - av) / 2;
     const tx = ax + av + 12;
@@ -513,13 +513,9 @@
       return out;
     });
     const logo = st.logo && L.imgs.get(st.logo);
-    const flogo = st.footerLogo && L.imgs.get(st.footerLogo);
-    L.m.font = `400 14px ${FONT}`;
-    const footW = st.footer ? L.m.measureText(st.footer).width + (flogo ? 22 : 0) : 0;
     L.ops.push((ctx) => {
       ctx.save();
       ctx.beginPath(); ctx.roundRect(x, y, w, H, R); ctx.clip();
-      if (FOOT) { ctx.fillStyle = th.fill; ctx.fillRect(x, y + TOP, w, FOOT); }
       if (st.chart && st.chart.d) {
         // The page's own chart path, scaled into the box's right side.
         const ch = TOP - 24, sy = y + 12;
@@ -549,15 +545,6 @@
         if (p.x > textW) break;
         ctx.font = p.font; ctx.fillStyle = p.col;
         ctx.fillText(p.t, tx + p.x, y + TOP / 2 + 13);
-      }
-      if (FOOT) {
-        const fx = x + (w - footW) / 2, fy = y + TOP + FOOT / 2;
-        ctx.font = `400 14px ${FONT}`; ctx.fillStyle = th.muted;
-        ctx.fillText(st.footer, fx, fy);
-        if (flogo) {
-          ctx.save(); ctx.beginPath(); ctx.roundRect(fx + footW - 16, fy - 8, 16, 16, 4); ctx.clip();
-          ctx.drawImage(flogo, fx + footW - 16, fy - 8, 16, 16); ctx.restore();
-        }
       }
     });
     return y + H;
@@ -696,7 +683,6 @@
       if (t.card && t.card.image && t.card.image.url) urls.add(t.card.image.url);
       for (const st of t.stocks || []) {
         if (st.logo) urls.add(st.logo);
-        if (st.footerLogo) urls.add(st.footerLogo);
       }
       const a = t.article;
       if (a && a.cover) urls.add(a.cover.url);
