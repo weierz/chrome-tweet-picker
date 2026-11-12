@@ -1,10 +1,10 @@
 # Chrome Web Store — TweetPicker
 
-Last updated: 2026-11-09
+Last updated: 2026-11-12
 
 ## Listing
 
-- Version: 1.0.0 (draft)
+- Version: 1.0.0, published 2026-11: https://chromewebstore.google.com/detail/tweetpicker/ppophefnhihljeoakdkcmfajgammnghf
 - Summary: On X/Twitter: copy images on hover, download videos, and share any tweet as an image.
 - Category: Social Networking
 - Language: English (United States)
@@ -17,6 +17,25 @@ TweetPicker adds convenient tools to X and Twitter.
 • Share posts as images: turn a post into an image card with its text, media, quoted post, link preview, engagement counts, date, and link where available. The card follows your X theme.
 
 Optional settings let you automatically like or bookmark a post after copying or sharing, and expand long posts in your timeline. These options are off by default.
+
+### Suggested search-friendly copy (not yet in the dashboard)
+
+Google ranks the store page on its title, summary and description, and the current ones never say "Twitter video", "download" next to "video", or "tweet as image" in the way people search. Paste into Store listing when ready:
+
+- Summary (132 max): Download Twitter/X videos and GIFs, copy full-size photos, and save any tweet as an image with full links. Free.
+- Description:
+
+TweetPicker is a free Chrome extension for X (Twitter). Hover a photo, a video or a post and a small button appears; move away and it's gone.
+
+• Download Twitter / X videos and GIFs: click the button on any video to save the best-quality MP4.
+• Copy images from tweets: copy the original-size photo to your clipboard, also from the full-screen viewer.
+• Save a tweet as an image: turn the whole post into one picture, with the full text (no "Show more" cut), every photo uncropped, quoted posts, link previews, counts, the date and the post's x.com link. The card follows your X theme (light, dim or dark).
+• Full links: shortened links like site.com/pa… are written out in full in the image.
+
+Optional, off by default: like or bookmark a post when you copy it, and expand long posts automatically.
+
+No account, no analytics, no developer server: TweetPicker only talks to X's own servers. Works on x.com and twitter.com.
+Website: https://tweetpicker.weierz.com/
 
 ## Permissions
 
