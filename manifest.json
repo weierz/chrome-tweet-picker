@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tweet Picker",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "On X/Twitter: copy images on hover, download videos, and share any tweet as an image.",
   "permissions": [
     "downloads",
