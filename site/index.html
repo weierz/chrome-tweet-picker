@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TweetPicker: download Twitter/X videos, copy images, save tweets as images</title>
-<meta name="description" content="Free Chrome extension for X (Twitter): download videos and GIFs as MP4, copy original-size photos, and save any tweet as an image with full links and the post URL. No account, no analytics.">
+<meta name="description" content="Free Chrome extension for X (Twitter): download videos and GIFs as MP4, copy original-size photos, and save any tweet or whole thread as an image with full links and the post URL. No account, no analytics.">
 <link rel="canonical" href="https://tweetpicker.weierz.com/">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/icon-128.png" type="image/png" sizes="128x128">
@@ -49,7 +49,7 @@
 
   <section class="hero">
     <h1 aria-label="Pick posts, images and videos from X in a simple way">Pick <span class="rot" aria-hidden="true"><span class="on">posts</span><span>images</span><span>videos</span></span> from X<br>in a simple way</h1>
-    <p class="lead">Copy photos, save videos, and turn any post into one complete image, with its quotes, previews, full links and the original post URL. The buttons only show up when you hover.</p>
+    <p class="lead">Copy photos, save videos, and turn any post, or a whole thread, into one complete image, with its quotes, previews, full links and the original post URL. The buttons only show up when you hover.</p>
     <a class="btn" href="https://chromewebstore.google.com/detail/tweetpicker/ppophefnhihljeoakdkcmfajgammnghf"><svg class="chrome" aria-hidden="true"><use href="#i-chrome"/></svg>Add to Chrome, it's free</a>
     <span class="note">Works on x.com and twitter.com. No account, no analytics, no developer server.</span>
   </section>
@@ -148,8 +148,26 @@
     </div>
   </section>
 
-  <!-- 3. full URLs -->
+  <!-- 2b. threads -->
   <section class="feat">
+    <div class="text">
+      <p class="kicker">Threads too</p>
+      <h2>A whole thread, in one image</h2>
+      <p>On a post that's part of a thread, the same picture icon copies the entire thread: every post the author wrote in the chain, in order, on one card.</p>
+      <ul class="ticks">
+        <li>Click any post in the thread, first, middle or last</li>
+        <li>Posts not loaded on the page yet are fetched for you</li>
+        <li>Replies from other people are left out</li>
+        <li>Each post keeps its photos, quotes and full links</li>
+      </ul>
+    </div>
+    <div class="demo cardview">
+      <img data-card="c" alt="A thread card: the author once at the top, then four posts in order joined by a line, one with a photo">
+    </div>
+  </section>
+
+  <!-- 3. full URLs -->
+  <section class="feat flip">
     <div class="text">
       <p class="kicker">Links you can read</p>
       <h2>Full URLs, not <span style="color:var(--accent)">site.com/pa…</span></h2>
@@ -176,7 +194,7 @@
   </section>
 
   <!-- 4. source URL -->
-  <section class="feat flip">
+  <section class="feat">
     <div class="text">
       <p class="kicker">Credit built in</p>
       <h2>The original post's link is in the image</h2>
@@ -193,7 +211,7 @@
   </section>
 
   <!-- 5. auto expand -->
-  <section class="feat">
+  <section class="feat flip">
     <div class="text">
       <p class="kicker">Optional</p>
       <h2>Long posts open by themselves</h2>
@@ -243,7 +261,7 @@
           <i class="sk-line" style="width:90%"></i><i class="sk-line" style="width:70%"></i><i class="sk-line" style="width:45%"></i>
         </div>
         <h3>Share a post as an image</h3>
-        <p>Picture icon, <b>first in the post's top-right icons</b>. The image is on your clipboard.</p>
+        <p>Picture icon, <b>first in the post's top-right icons</b>. The image is on your clipboard. In a thread, it copies the whole thread.</p>
       </div>
     </div>
   </section>
@@ -272,6 +290,8 @@
     <p>Install TweetPicker, open the post on x.com and hover the video or GIF. Click the download button in its top-right corner and the best-quality MP4 is saved to your Downloads folder.</p>
     <h3>How do I save a tweet as an image?</h3>
     <p>Hover the post and click the picture icon, first among the icons at its top right. TweetPicker draws the whole tweet, including long text, every photo, quoted posts and link previews, as one image and copies it to your clipboard, ready to paste into a chat, document or slide.</p>
+    <h3>How do I save a whole Twitter / X thread as an image?</h3>
+    <p>Hover any post in the thread and click the same picture icon. TweetPicker finds every post the author wrote in the chain, loads the ones the page hasn't shown yet, and draws them all in order on one image, without other people's replies.</p>
     <h3>How do I copy an image from a tweet?</h3>
     <p>Hover the photo and click the copy button in its corner. You get the original-size image on your clipboard, also from X's full-screen photo viewer.</p>
     <h3>Is TweetPicker free? Does it need my X password?</h3>

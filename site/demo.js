@@ -142,11 +142,24 @@
       counts: { replies: 48, reposts: 212, likes: 1900, views: 64000 },
     },
   };
+  // A made-up thread for the thread card.
+  const lumen = { name: 'Lumen Notes', handle: 'lumennotes', avatar: 'https://example.invalid/#av-lumen' };
+  const tpost = (n, text, extra) => ({
+    id: String(1855400000000 + n), url: `https://x.com/lumennotes/status/${1855400000000 + n}`,
+    user: lumen, createdAt: '2026-11-09T07:30:00Z', text, links: [], media: [], ...extra,
+  });
+  const THREAD = [
+    tpost(1, 'A year of writing every morning. What actually worked, in four posts 🧵'),
+    tpost(2, '1. The first 20 minutes are warm-up. Don\'t judge them; the good sentences come after.'),
+    tpost(3, '2. Stop mid-sentence. Tomorrow you\'ll know exactly where to start. This is the view I started at most days:', { media: [photo('ridge')] }),
+    tpost(4, '3. Keep a "parking lot" file. Half of next month\'s pieces start in it. That\'s it. None of it is new; it only worked once I did it every day.'),
+  ];
   const ready = {};
-  for (const [k, model] of Object.entries(CARDS)) {
+  for (const [k, model] of Object.entries({ ...CARDS, c: THREAD })) {
     ready[k] = (async () => {
       try {
-        const blob = await TwsCard.render(model, { theme: dark() ? 'dark' : 'light', loadImage });
+        const opts = { theme: dark() ? 'dark' : 'light', loadImage };
+        const blob = Array.isArray(model) ? await TwsCard.renderThread(model, opts) : await TwsCard.render(model, opts);
         const src = URL.createObjectURL(blob);
         await Promise.all($$(`img[data-card="${k}"]`).map((img) => { img.src = src; return img.decode().catch(() => {}); }));
       } catch (e) { console.error('card', k, e); }
