@@ -14,7 +14,7 @@ a{color:var(--accent)}
 code{font:14px ui-monospace,SFMono-Regular,Menlo,monospace}
 .wrap{max-width:1040px;margin:0 auto;padding:0 20px}
 header.top{display:flex;align-items:center;gap:10px;padding:20px 0}
-header.top a.brand{display:flex;align-items:center;gap:10px;color:var(--fg);text-decoration:none;font-weight:700;font-size:18px}
+header.top a.brand{white-space:nowrap;display:flex;align-items:center;gap:10px;color:var(--fg);text-decoration:none;font-weight:700;font-size:18px}
 header.top img{width:32px;height:32px}
 header.top nav{margin-left:auto;font-size:15px;white-space:nowrap}
 header.top nav a{color:var(--muted);text-decoration:none;margin-left:18px}
@@ -22,6 +22,7 @@ header.top nav a:hover{color:var(--fg)}
 header.top nav{display:flex;align-items:center}
 header.top nav a.gh{display:flex}
 header.top nav a.gh svg{width:20px;height:20px}
+header.top nav .narrow{display:none}
 
 /* hero */
 .hero{text-align:center;padding:40px 0 8px}
@@ -119,6 +120,9 @@ article.doc{padding:24px 0 48px;max-width:760px}
 article.doc h1{font-size:34px;margin:16px 0 4px;letter-spacing:-.01em}
 article.doc .updated{color:var(--muted);margin:0 0 28px}
 article.doc h2{font-size:20px;margin:32px 0 8px}
+article.doc h3{font-size:16px;margin:20px 0 6px}
+article.doc ul{padding-left:22px;margin:8px 0 12px}
+article.doc li{margin:4px 0}
 
 /* ---------- demos ---------- */
 .demo{position:relative;border-radius:22px;background:linear-gradient(135deg,var(--tint) 0%,var(--card) 60%);border:1px solid var(--line);padding:28px;overflow:hidden;min-width:0}
@@ -212,9 +216,13 @@ svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stro
   .share-demo{grid-template-columns:1fr}
   .demo{padding:18px}
 }
+/* The full nav needs ~680px; below that, keep the brand, Releases, Privacy and GitHub. */
+@media (max-width:720px){
+  header.top nav a.wide,header.top nav span.wide{display:none}
+  header.top nav span.narrow{display:inline}
+}
 @media (max-width:420px){
   header.top nav a{margin-left:12px}
-  header.top nav a.wide{display:none}
   .post .meta .h{display:none}
   .actions{padding-right:0}
 }

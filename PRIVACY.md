@@ -1,6 +1,6 @@
 # Tweet Picker Privacy Policy
 
-Last updated: November 10, 2026
+Last updated: November 12, 2026
 
 Tweet Picker helps you copy images, download videos and GIFs, and create image cards from posts on X/Twitter.
 
