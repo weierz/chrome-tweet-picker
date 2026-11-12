@@ -19,6 +19,11 @@ The tooltip reads "Copy thread as image" on posts in a thread. On every other po
 
 A post with an X Money pay link now shows a "Pay @handle with X Money" box, as X does. Before, the image showed the raw `x.com/i/jf/cards/money/…` link and X's generic link preview.
 
+### Stocks
+
+- `$cashtags` such as `$NVDA` are now blue, like @mentions and #hashtags.
+- X's stock box under a post that names one is now in the image: the company logo, name, symbol, price, the day's change in green or red, the day's chart, and the "Trade on …" line. X builds this box on the page from live market data, so the image shows the numbers as they were on your screen when you copied it.
+
 ### Renamed to Tweet Picker
 
 The extension is now called **Tweet Picker**, with a space. The GitHub repository moved to [weierz/chrome-tweet-picker](https://github.com/weierz/chrome-tweet-picker); old links redirect.
